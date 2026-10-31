@@ -374,6 +374,8 @@ the bridge and FTPS tests are skipped.
   [klipper-bambuddy](https://github.com/ooniiik/klipper-bambuddy) (MIT).
 - Bambuddy is AGPL-3.0. ElegooBridge only talks to it over the network.
 
-Licence: not chosen yet.
+**Licence: [MIT](LICENSE).** ElegooBridge is free: use it, copy it, change it
+and share it in any way, including in your own projects, as long as the licence
+notice stays with it. It comes with no warranty.
 
 ElegooBridge isn't affiliated with Elegoo, Bambu Lab or the Bambuddy project.
