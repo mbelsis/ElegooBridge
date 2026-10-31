@@ -1,5 +1,12 @@
 # ElegooBridge
 
+![Version 0.3.0](https://img.shields.io/badge/version-0.3.0-blue)
+![Licence MIT](https://img.shields.io/badge/licence-MIT-green)
+![Runs in Docker](https://img.shields.io/badge/runs%20in-Docker-2496ED?logo=docker&logoColor=white)
+![Python 3.12](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
+![Tested on Centauri Carbon V1.4.49](https://img.shields.io/badge/tested%20on-Centauri%20Carbon%20V1.4.49-orange)
+![Works with Bambuddy](https://img.shields.io/badge/works%20with-Bambuddy-00AE42)
+
 **Lets [Bambuddy](https://github.com/maziggy/bambuddy) manage an Elegoo Centauri
 Carbon alongside Bambu Lab printers.**
 
@@ -23,11 +30,12 @@ Bambuddy  --MQTT/TLS :8883-->  Mosquitto  <-->  ElegooBridge  --SDCP :3030-->  C
 Version **0.3.0**. Tested with Bambuddy and a Centauri Carbon (firmware V1.4.49),
 including a print sent from Bambuddy's queue.
 
-> ⚠️ **Before printing from Bambuddy:** sliced files must be stamped first, on your
+> [!WARNING]
+> **Before printing from Bambuddy:** sliced files must be stamped first, on your
 > own computer, with the **Stamp for Bambuddy** Mac app (drag and drop) or a
 > Python script. See [Printing from Bambuddy](#printing-from-bambuddy).
 
-## Screenshots
+## 📸 Screenshots
 
 The Centauri Carbon in Bambuddy, through ElegooBridge:
 
@@ -39,60 +47,65 @@ The Centauri Carbon in Bambuddy, through ElegooBridge:
 | --- | --- |
 | ![Setting the nozzle temperature](Screenshots/TempConfiguration.png) | ![The Centauri's camera view next to its card](Screenshots/Camera.png) |
 
-## What works
+## ✅ What works
 
-| In Bambuddy | Status |
+| In Bambuddy | |
 | --- | --- |
-| Live card: state, progress, layers, remaining time, file name | ✓ |
-| Nozzle, bed and chamber temperatures | ✓ |
-| Preparation stages (heating, homing, levelling) | ✓, as close as the Centauri reports them |
-| Finished and failed jobs, including power loss mid-print | ✓ |
-| **Filament runout:** reported as Bambu error `0300_8004`, "Filament ran out" | ✓ |
-| Pause, resume, stop | ✓ |
-| Nozzle and bed temperature, part / auxiliary / chamber fans, chamber light, speed level | ✓ |
-| Home and X/Y/Z jog (the printer must be homed before jogging) | ✓ |
-| **Camera**, built in: live view and snapshots, as a P1S camera on port 6000. Any number of viewers share one connection to the printer, which allows only four. | ✓ |
-| Offline when the Centauri is off (after Bambuddy's 60 s timeout) | ✓ |
-| **Printing from Bambuddy** (library, queue): files must be stamped, see below | ✓ |
-| A refused print shows on the card at once as a failed job with a Bambu error, e.g. `0500_4037` "not compatible with current printer model" | ✓ |
-| File manager: the files Bambuddy uploaded | ✓ |
+| Live card: state, progress, layers, remaining time, file name | ✅ |
+| Nozzle, bed and chamber temperatures | ✅ |
+| Preparation stages (heating, homing, levelling) | ✅ as close as the Centauri reports them |
+| Finished and failed jobs, including power loss mid-print | ✅ |
+| **Filament runout:** reported as Bambu error `0300_8004`, "Filament ran out" | ✅ |
+| Pause, resume, stop | ✅ |
+| Nozzle and bed temperature, part / auxiliary / chamber fans, chamber light, speed level | ✅ |
+| Home and X/Y/Z jog (the printer must be homed before jogging) | ✅ |
+| **Camera**, built in: live view and snapshots, as a P1S camera on port 6000. Any number of viewers share one connection to the printer, which allows only four. | ✅ |
+| Offline when the Centauri is off (after Bambuddy's 60 s timeout) | ✅ |
+| **Printing from Bambuddy** (library, queue): files must be stamped, see below | ✅ |
+| A refused print shows on the card at once as a failed job with a Bambu error, e.g. `0500_4037` "not compatible with current printer model" | ✅ |
+| File manager: the files Bambuddy uploaded | ✅ |
 
-**Not supported yet** (the bridge refuses these and the printer does nothing):
+### ❌ Not supported yet
+
+The bridge refuses these and the printer does nothing:
 
 | In Bambuddy | Why |
 | --- | --- |
 | Extruder jog (extrude / retract buttons) | The Centauri has no documented command for it, and the bridge only sends tested commands |
-| AMS filament slots and colours | The Centauri's CANVAS unit isn't mapped to Bambu's AMS yet; prints use the loaded filament |
+| AMS filament slots and colours | The Centauri's CANVAS unit isn't mapped to Bambu's AMS yet; prints use the loaded filament. See [the plan](docs/FUTURE_CANVAS_AND_CC2.md) |
 | Files already stored on the Centauri (e.g. sent from ElegooSlicer) | The file manager shows only the files Bambuddy uploaded; planned, see [Plan](#plan) |
 | Any other G-code command | The Centauri doesn't accept raw G-code. The bridge translates temperatures (M104/M109, M140/M190), fans (M106/M107), X/Y/Z moves (G0/G1, G90/G91) and homing (G28) |
 
-## Testing
+## 🧪 Testing
 
-**On a real printer.** Everything marked ✓ above was tested on a real Centauri
+🖨️ **On a real printer.** Everything marked ✅ above was tested on a real Centauri
 Carbon (firmware V1.4.49) with Bambuddy: every printer command the bridge uses,
 a full print sent from Bambuddy's queue, pause, resume and stop, a power cut
 during a print and a filament runout. The results are in
 [`docs/FINDINGS.md`](docs/FINDINGS.md).
 
-**Automated tests.** The project's tests (see [Development](#development)) check the bridge's
+🤖 **Automated tests.** The project's tests (see [Development](#development)) check the bridge's
 own code against a simulated Centauri that answers like the real one, so they run
 in seconds without a printer switched on.
 
-## Set up
+## 🚀 Set up
 
 ### What you need
 
-- **Docker Desktop**, installed and **running**: download it from
+- 🐳 **Docker Desktop**, installed and **running**: download it from
   [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop/)
   for Mac or Windows. On Linux, Docker Engine with the Compose plugin also works.
   ElegooBridge runs inside Docker, so nothing else needs installing.
-- The **Centauri Carbon switched on**, on the same network as this computer.
-- **Bambuddy**, running anywhere on your network, to add the printer to.
+- 🖨️ The **Centauri Carbon switched on**, on the same network as this computer.
+- 🟢 **Bambuddy**, running anywhere on your network, to add the printer to.
 
 Then download or clone this repository, and set it up with the quick setup script
 or by hand.
 
-### Quick setup (recommended)
+### ⚡ Quick setup (recommended)
+
+> [!TIP]
+> The setup script is the easiest way: it asks a few questions and does the rest.
 
 The setup script does everything below for you:
 - checks Docker Desktop is installed and running;
@@ -103,8 +116,8 @@ The setup script does everything below for you:
 
 | | |
 | --- | --- |
-| **Mac or Linux** | In a terminal, in this folder: `./setup.sh` |
-| **Windows** | Double-click **`setup.bat`** (or run it from a command prompt in this folder) |
+| 🍎 🐧 **Mac or Linux** | In a terminal, in this folder: `./setup.sh` |
+| 🪟 **Windows** | Double-click **`setup.bat`** (or run it from a command prompt in this folder) |
 
 Press Enter to accept the suggested values. At the end you'll see something like:
 
@@ -134,7 +147,7 @@ bridge provides both:
 Run the script again at any time. It keeps your settings unless you choose to
 change them, and restarts the bridge with any updates.
 
-### Manual setup
+### 🔧 Manual setup
 
 1. **Find the printer**, from this folder. This needs Python 3, which Macs and
    Linux already have:
@@ -154,7 +167,7 @@ change them, and restarts the bridge with any updates.
    The TLS certificate Bambuddy connects with is created automatically the first
    time.
 
-### Add the printer in Bambuddy
+### ➕ Add the printer in Bambuddy
 
 Bambuddy sees the bridge as a Bambu Lab **P1S**, so you add it like a P1S. The
 setup script prints the values to use; they are also in `.env`.
@@ -176,12 +189,16 @@ setup script prints the values to use; they are also in `.env`.
 4. Leave **External camera** off in the printer's settings: the camera works
    through the bridge.
 
-**One bridge per printer.** Bambuddy expects each printer on its own IP address
-with port 8883, so a second Centauri needs a second host or IP address.
+> [!NOTE]
+> **One bridge per printer.** Bambuddy expects each printer on its own IP address
+> with port 8883, so a second Centauri needs a second host or IP address.
 
-## Printing from Bambuddy
+<a id="printing-from-bambuddy"></a>
 
-> **Important: stamp every file before you add it to Bambuddy.**
+## 🖨️ Printing from Bambuddy
+
+> [!IMPORTANT]
+> **Stamp every file before you add it to Bambuddy.**
 > Files from ElegooSlicer (or OrcaSlicer with a Centauri profile) can't be printed
 > from Bambuddy as they are. Stamp them first, each time you export: drop them on
 > the **Stamp for Bambuddy** Mac app, or run the Python script. Both run on your
@@ -212,7 +229,7 @@ The stamp changes only that label, to P1S, so Bambuddy accepts the file.
    → **Upload**, or drag the file onto that page. Then select it → **Print** →
    **Centauri Carbon**. If asked about AMS slots, choose the external spool.
 
-### Stamping with the Mac app (easiest)
+### 🍎 Stamping with the Mac app (easiest)
 
 **Stamp for Bambuddy.app** is a drag-and-drop app. Build it once, in this folder;
 it needs only macOS:
@@ -235,11 +252,12 @@ the stamped files, ready to drag into Bambuddy.
 If a file can't be stamped, for example a project without sliced G-code or a file
 for another printer, the window says why and what to do instead.
 
-The first time you open it, macOS may say it can't verify the developer. Right-click
-the app → **Open** → **Open**. It's built and signed on your own Mac, not
-notarised by Apple.
+> [!NOTE]
+> The first time you open it, macOS may say it can't verify the developer.
+> Right-click the app → **Open** → **Open**. It's built and signed on your own
+> Mac, not notarised by Apple.
 
-### Stamping with Python (Mac, Linux or Windows)
+### 🐍 Stamping with Python (Mac, Linux or Windows)
 
 The app is a wrapper around one self-contained script,
 [`stamp/stamp_for_bambuddy.py`](stamp/stamp_for_bambuddy.py). It needs only
@@ -268,9 +286,10 @@ running it again over a folder is safe. On Windows, use `py` instead of `python3
 On a Mac, you can type the command and then drag the file from Finder into the
 Terminal window to fill in its path.
 
-**Re-slice, re-stamp.** If you change anything and export again, stamp the new
-export too. The stamp never changes your original file and never overwrites an
-existing stamped file. Delete the old `.bambuddy.gcode.3mf` first, or keep both.
+> [!TIP]
+> **Re-slice, re-stamp.** If you change anything and export again, stamp the new
+> export too. The stamp never changes your original file and never overwrites an
+> existing stamped file. Delete the old `.bambuddy.gcode.3mf` first, or keep both.
 
 ### What the stamp changes, and what it doesn't
 
@@ -296,26 +315,27 @@ If the bridge refuses a file, the Centauri card shows a failed job with the
 reason, for example `0500_4037` "Your sliced file is not compatible with current
 printer model".
 
-## How states are shown
+## 🚦 How states are shown
 
 | Centauri | Bambuddy |
 | --- | --- |
-| Idle | IDLE, or FINISH / FAILED after a job, as on a Bambu printer |
-| Heating, homing, levelling, file loaded | PREPARE, with a matching stage |
-| Printing | RUNNING |
-| Pausing / paused | PAUSE: "Paused by the user", or "Filament ran out" with error `0300_8004` |
-| Completed | FINISH at 100 %: the Centauri itself stops at about 88 % |
-| Stopping / stopped, or idle after losing power mid-job | FAILED |
+| ⚪ Idle | IDLE, or FINISH / FAILED after a job, as on a Bambu printer |
+| 🟡 Heating, homing, levelling, file loaded | PREPARE, with a matching stage |
+| 🔵 Printing | RUNNING |
+| 🟠 Pausing / paused | PAUSE: "Paused by the user", or "Filament ran out" with error `0300_8004` |
+| 🟢 Completed | FINISH at 100 %: the Centauri itself stops at about 88 % |
+| 🔴 Stopping / stopped, or idle after losing power mid-job | FAILED |
 
 The runout reason exists only while the printer is paused, in its print history.
 The bridge reads it as the pause starts, about a minute before ElegooSlicer shows
 it.
 
-## Safety
+## 🛡️ Safety
 
 - Only the commands tested in `docs/FINDINGS.md` are ever sent. Unknown SDCP
   commands can crash the printer's software.
-- Other G-code from Bambuddy, such as moves or homing, is logged and ignored.
+- G-code from Bambuddy is translated only for temperatures, fans, X/Y/Z moves
+  and homing; any other G-code is refused.
 - Temperatures above 300 °C (nozzle) or 110 °C (bed) are refused.
 - **Only print files can be uploaded** (`.gcode.3mf`, `.3mf`, `.gcode`). A Bambu
   firmware file, which Bambuddy's "update firmware" would upload, is refused, so
@@ -323,29 +343,38 @@ it.
   `99.01.04.49`, so Bambuddy never offers a Bambu update for it.
 - Only G-code sliced for a Centauri Carbon is ever sent to the printer.
 - Moves and homing are refused while the printer is busy or homing.
-- The Centauri's own network port has no password. Anything on your LAN can
-  control it, with or without this bridge.
 
-## Plan
+> [!CAUTION]
+> The Centauri's own network port has no password. Anything on your LAN can
+> control it, with or without this bridge.
 
-1. ~~Research the protocol~~: done, see [`docs/FINDINGS.md`](docs/FINDINGS.md).
-2. ~~Phase 1, status and control~~: done.
-3. ~~Phase 2, printing from Bambuddy~~: done.
-4. Next:
+<a id="plan"></a>
+
+## 🗺️ Plan
+
+1. ✅ ~~Research the protocol~~: done, see [`docs/FINDINGS.md`](docs/FINDINGS.md).
+2. ✅ ~~Phase 1, status and control~~: done.
+3. ✅ ~~Phase 2, printing from Bambuddy~~: done.
+4. 🔜 Next:
    - show the Centauri's own stored files;
    - switch the camera on through SDCP (386) after a restart, if it comes back
      without a picture;
    - answer the power-loss prompt from Bambuddy (134 / 135);
    - publish a Docker image.
+5. 🔮 Later, needs hardware we don't have: **CANVAS** (multi-colour) and the
+   **Centauri Carbon 2**. The steps to build and test them are in
+   [`docs/FUTURE_CANVAS_AND_CC2.md`](docs/FUTURE_CANVAS_AND_CC2.md).
 
-## Development
+<a id="development"></a>
+
+## 🛠️ Development
 
 ```sh
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python -m unittest discover -s tests -t .
 ```
 
-The tests use a fake Centauri, a stand-in MQTT client and a real local FTPS
+The tests use a simulated Centauri, a stand-in MQTT client and a real local FTPS
 server, so no printer or broker is needed. Without the requirements installed,
 the bridge and FTPS tests are skipped.
 
@@ -366,7 +395,7 @@ the bridge and FTPS tests are skipped.
 | `tools/` | The scripts used to work out the protocol |
 | `local/` | Private: your printer's details and raw recordings. Ignored by git. |
 
-## Credits and licence
+## 🙏 Credits and licence
 
 - The command formats come from [pycentauri](https://github.com/bjan/pycentauri)
   (Apache-2.0).
