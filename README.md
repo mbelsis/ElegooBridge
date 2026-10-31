@@ -57,32 +57,79 @@ each tested on a real Centauri Carbon, firmware V1.4.49: see
 
 ## Set up
 
-You need Docker, and the Centauri on the same network.
+### What you need
 
-1. **Find the printer**, from this folder:
+- **Docker Desktop**, installed and **running**: download it from
+  [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop/)
+  for Mac or Windows. On Linux, Docker Engine with the Compose plugin also works.
+  ElegooBridge runs inside Docker, so nothing else needs installing.
+- The **Centauri Carbon switched on**, on the same network as this computer.
+- **Bambuddy**, running anywhere on your network, to add the printer to.
+
+Then download or clone this repository, and set it up with the quick setup script
+or by hand.
+
+### Quick setup (recommended)
+
+The setup script does everything below for you:
+- checks Docker Desktop is installed and running;
+- finds the Centauri on your network;
+- creates the settings with a random access code;
+- starts ElegooBridge and waits until it's connected to the printer;
+- prints exactly what to enter in Bambuddy.
+
+| | |
+| --- | --- |
+| **Mac or Linux** | In a terminal, in this folder: `./setup.sh` |
+| **Windows** | Double-click **`setup.bat`** (or run it from a command prompt in this folder) |
+
+Press Enter to accept the suggested values. At the end you'll see something like:
+
+```
+ElegooBridge is running and connected to the printer.
+
+Now add the printer in Bambuddy (Printers > Add printer):
+  Model:          P1S
+  IP address:     192.168.1.20
+  Serial number:  0390000ELEGOO01
+  Access code:    48213907
+```
+
+Run the script again at any time. It keeps your settings unless you choose to
+change them, and restarts the bridge with any updates.
+
+### Manual setup
+
+1. **Find the printer**, from this folder. This needs Python 3, which Macs and
+   Linux already have:
    ```sh
    python3 -m elegoobridge discover
    ```
-   It prints the IP and `PRINTER_MAINBOARD_ID`.
-2. **Configure:** copy `.env.example` to `.env` and fill it in. `ACCESS_CODE` is a
-   password you choose; Bambuddy will use it.
-3. **Create the TLS certificate**, once:
-   ```sh
-   ./scripts/make-certs.sh
-   ```
-4. **Start it:**
+   It prints the printer's IP and its `PRINTER_MAINBOARD_ID`.
+2. **Configure:** copy `.env.example` to `.env` and fill it in.
+   - `BRIDGE_HOST_IP` is **this** computer's IP address.
+   - `ACCESS_CODE` is a password you choose, up to 20 characters. Bambuddy will
+     use it.
+3. **Start it:**
    ```sh
    docker compose up -d --build
    docker compose logs -f bridge
    ```
-5. **Add the printer in Bambuddy:**
+   The TLS certificate Bambuddy connects with is created automatically the first
+   time.
 
-   | Field | Value |
-   | --- | --- |
-   | Model | **P1S**: enclosed, same 256 mm build volume, and the same three fans |
-   | IP address | The computer running ElegooBridge, **not** the printer |
-   | Serial number | `BAMBU_SERIAL` from `.env` |
-   | Access code | `ACCESS_CODE` from `.env` |
+### Add the printer in Bambuddy
+
+In Bambuddy: **Printers → Add printer**, then:
+
+| Field | Value |
+| --- | --- |
+| Model | **P1S**: enclosed, same 256 mm build volume, and the same three fans |
+| IP address | The computer running ElegooBridge (`BRIDGE_HOST_IP`), **not** the printer |
+| Serial number | `BAMBU_SERIAL` from `.env` |
+| Access code | `ACCESS_CODE` from `.env` |
+
+Leave **External camera** off: the camera works through the bridge.
 
 **One bridge per printer.** Bambuddy expects each printer on its own IP address
 with port 8883, so a second Centauri needs a second host or IP address.
@@ -269,6 +316,8 @@ the bridge and FTPS tests are skipped.
 | `elegoobridge/camera.py` | Camera relay: one MJPEG connection to the printer, served as a P1S camera on port 6000 |
 | `stamp/` | **Standalone script** that labels Centauri `.gcode.3mf` files for Bambuddy's P1S card; runs on your own computer |
 | `docs/` | Protocol findings and the test log |
+| `setup.sh`, `setup.bat`, `scripts/setup.ps1` | Quick setup for Mac/Linux and Windows |
+| `elegoobridge/certs.py` | Creates the TLS certificate on first start, inside Docker |
 | `tools/` | The scripts used to work out the protocol |
 | `local/` | Private: your printer's details and raw recordings. Ignored by git. |
 

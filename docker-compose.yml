@@ -1,4 +1,12 @@
 services:
+  # Creates the TLS certificate on first start (no OpenSSL needed on your computer).
+  certs:
+    build: .
+    command: ["python", "-m", "elegoobridge", "certs", "/certs"]
+    user: "0"
+    volumes:
+      - ./mosquitto/certs:/certs
+
   mosquitto:
     image: eclipse-mosquitto:2
     # The password file is rebuilt from ACCESS_CODE on every start.
@@ -13,6 +21,9 @@ services:
     volumes:
       - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - ./mosquitto/certs:/mosquitto/certs:ro
+    depends_on:
+      certs:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   bridge:
@@ -34,7 +45,10 @@ services:
       - ./mosquitto/certs:/certs:ro
       - print_files:/data/ftp
     depends_on:
-      - mosquitto
+      certs:
+        condition: service_completed_successfully
+      mosquitto:
+        condition: service_started
     restart: unless-stopped
 
 volumes:
