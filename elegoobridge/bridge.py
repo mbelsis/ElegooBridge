@@ -25,6 +25,7 @@ from elegoobridge.mapper import PAUSE_STATES, REASONS, Mapper, version_report
 log = logging.getLogger("elegoobridge")
 
 HEARTBEAT = 5.0
+LIGHT_SETTLE = 5.0  # seconds until the printer's status shows a light change
 
 
 def _sequence() -> str:
@@ -38,7 +39,12 @@ class Bridge:
         self.report: dict[str, Any] | None = None
         self._last_code: int | None = None
         self._lock = threading.Lock()
+        # Commands run in order on one worker; slow work (uploading and starting a
+        # print, reading a pause reason) runs on another, so a stop or resume
+        # never waits behind it.
         self._jobs: queue.Queue = queue.Queue()
+        self._slow: queue.Queue = queue.Queue()
+        self._light_sent: tuple[bool, float] | None = None
         self.printer = sdcp.SdcpClient(
             cfg.printer_host, cfg.mainboard_id, on_status=self._on_status, on_connection=self._on_connection
         )
@@ -69,7 +75,7 @@ class Bridge:
         self._publish_status(status)
         if entered_pause:
             task_id = str((status.get("PrintInfo") or {}).get("TaskId") or "")
-            self._jobs.put(lambda: self._read_pause_reason(task_id))
+            self._slow.put(lambda: self._read_pause_reason(task_id))
 
     def _read_pause_reason(self, task_id: str) -> None:
         # The reason only exists in the history while the job is paused, and
@@ -136,7 +142,8 @@ class Bridge:
             except sdcp.SdcpError as error:
                 log.warning("command %s failed: %s", cmd, error)
         if action.start is not None:
-            self._start_job(action.start)
+            block = action.start
+            self._slow.put(lambda: self._start_job(block))
         if action.light is not None:
             self._set_light(action.light)
         if action.clear_error:
@@ -198,31 +205,41 @@ class Bridge:
     def _set_light(self, on: bool) -> None:
         # On V1.4.49 the light toggles on every command. 0 turns it on from off,
         # 1 turns it off from on, so send only when a change is needed.
+        # The status can lag a moment behind a change, so a request just sent
+        # counts as the current state; otherwise a second request would toggle back.
         current = (self.printer.status.get("LightStatus") or {}).get("SecondLight")
+        if self._light_sent and time.time() - self._light_sent[1] < LIGHT_SETTLE:
+            current = 1 if self._light_sent[0] else 0
         if current == (1 if on else 0):
             return
         try:
             self.printer.request(sdcp.SET_PARAMS, {"LightStatus": {"SecondLight": 0 if on else 1}})
+            self._light_sent = (on, time.time())
             log.info("light %s", "on" if on else "off")
         except sdcp.SdcpError as error:
             log.warning("light command failed: %s", error)
 
     # Running
 
-    def _worker(self) -> None:
+    @staticmethod
+    def _worker(jobs: queue.Queue) -> None:
         while True:
-            job = self._jobs.get()
+            job = jobs.get()
             try:
                 job()
             except Exception:
                 log.exception("command failed")
+
+    def start_workers(self) -> None:
+        threading.Thread(target=self._worker, args=(self._jobs,), name="commands", daemon=True).start()
+        threading.Thread(target=self._worker, args=(self._slow,), name="slow-work", daemon=True).start()
 
     def run_forever(self) -> None:
         log.info(
             "bridging Centauri %s to MQTT %s:%s as %s",
             self.cfg.printer_host, self.cfg.mqtt_host, self.cfg.mqtt_port, self.cfg.serial,
         )
-        threading.Thread(target=self._worker, name="commands", daemon=True).start()
+        self.start_workers()
         if self.cfg.camera_enable:
             from elegoobridge.camera import CameraRelay, ChamberImageServer
 

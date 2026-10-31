@@ -62,7 +62,7 @@ class BridgeTests(unittest.TestCase):
         upload.upload = fake_upload
         self.bridge.printer.port = self.server.server_address[1]
         self.mqtt = self.bridge.mqtt = FakeMqtt()
-        threading.Thread(target=self.bridge._worker, daemon=True).start()
+        self.bridge.start_workers()
         self.bridge.printer.start()
         self.wait(lambda: self.mqtt.reports())
 
@@ -120,6 +120,26 @@ class BridgeTests(unittest.TestCase):
         light_commands = [d for c, d in self.server.received if c == sdcp.SET_PARAMS]
         self.assertEqual(light_commands, [{"LightStatus": {"SecondLight": 0}}])
 
+    def test_two_light_requests_before_the_status_changes_toggle_once(self):
+        # The light toggles on every command, and the status lags behind it.
+        self.server.push(printing(13, light=0))
+        self.wait(lambda: self.bridge.printer.status.get("LightStatus", {}).get("SecondLight") == 0)
+        self.command({"system": {"command": "ledctrl", "led_node": "chamber_light", "led_mode": "on"}})
+        self.command({"system": {"command": "ledctrl", "led_node": "chamber_light", "led_mode": "on"}})
+        self.command({"print": {"command": "gcode_line", "param": "M140 S50"}})
+        self.wait(lambda: (sdcp.SET_PARAMS, {"TempTargetHotbed": 50}) in self.server.received)
+        light_commands = [d for c, d in self.server.received if c == sdcp.SET_PARAMS and "LightStatus" in d]
+        self.assertEqual(light_commands, [{"LightStatus": {"SecondLight": 0}}])
+
+    def test_stop_is_not_delayed_by_reading_a_pause_reason(self):
+        # No history entry: the bridge keeps retrying for about 8 s.
+        self.server.history = {"HistoryData": ["older"], "detail": []}
+        self.server.push(printing(13))
+        self.server.push(printing(6))
+        self.wait(lambda: (sdcp.HISTORY, {}) in self.server.received)
+        self.command({"print": {"command": "stop", "sequence_id": "6"}})
+        self.wait(lambda: (sdcp.STOP, {}) in self.server.received, timeout=1.0)
+
     def test_temperature_and_reply(self):
         self.command({"print": {"command": "gcode_line", "param": "M140 S60", "sequence_id": "9"}})
         self.wait(lambda: (sdcp.SET_PARAMS, {"TempTargetHotbed": 60}) in self.server.received)
@@ -173,6 +193,16 @@ class BridgeTests(unittest.TestCase):
         self.wait(lambda: self.mqtt.reports()[-1]["print_error"] == 0x05004037)
         self.assertEqual(self.mqtt.reports()[-1]["gcode_state"], "FAILED")
         self.assertNotIn(sdcp.START, [c for c, _ in self.server.received])
+
+    def test_refused_print_after_a_finished_job_shows_failed(self):
+        # The Centauri keeps reporting its last job as completed while idle.
+        self.server.push({"CurrentStatus": [0], "PrintInfo": {"Status": 9, "Filename": "cube.gcode", "TaskId": "t1"}})
+        self.wait(lambda: self.mqtt.reports()[-1]["gcode_state"] == "FINISH")
+        make_3mf(Path(self.spool.name) / "p1s.gcode.3mf", {"Metadata/plate_1.gcode": P1S_GCODE})
+        self.assertEqual(self.start("p1s.gcode.3mf")["result"], "failed")
+        self.bridge._publish_status(self.bridge.printer.status)  # the next heartbeat
+        last = self.mqtt.reports()[-1]
+        self.assertEqual((last["gcode_state"], last["print_error"]), ("FAILED", 0x05004037))
 
     def test_no_start_while_busy_or_missing(self):
         reply = self.start("missing.gcode.3mf")

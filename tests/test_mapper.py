@@ -122,6 +122,17 @@ class FieldTests(unittest.TestCase):
         self.assertEqual(report(m, 16)["print_error"], 0)
         self.assertEqual(report(m, 9)["print_error"], 0)
 
+    def test_refused_job_after_a_completed_job_stays_failed(self):
+        # The printer keeps reporting status 9 (completed) until its next job.
+        m = Mapper()
+        self.assertEqual(report(m, 9)["gcode_state"], "FINISH")
+        m.refuse_job(0x05004037)
+        for _ in range(3):
+            r = report(m, 9)
+            self.assertEqual((r["gcode_state"], r["print_error"]), ("FAILED", 0x05004037))
+        m.job_error = 0  # cleared from Bambuddy
+        self.assertEqual(report(m, 9)["gcode_state"], "FINISH")
+
     def test_homing_from_the_control_panel(self):
         r = report(Mapper(), 0, filename="", current=9)
         self.assertEqual((r["gcode_state"], r["stg_cur"]), ("IDLE", 13))

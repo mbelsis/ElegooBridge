@@ -116,6 +116,11 @@ class Mapper:
             self.pause_reason = 0
         if state in ("PREPARE", "RUNNING", "PAUSE"):
             self.job_error = 0
+        elif self.job_error:
+            # A refused print stays failed until a new job starts or Bambuddy
+            # clears it, even while the printer still reports its last job as
+            # completed (it does until the next job).
+            state = "FAILED"
         self.job_active = state in ("RUNNING", "PAUSE", "PREPARE")
         self.gcode_state = state
 

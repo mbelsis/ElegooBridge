@@ -47,7 +47,15 @@ def file_name(url: str) -> str:
 
 
 def find_upload(root: Path, url: str) -> Path:
+    """The uploaded file a project_file url names: its exact path if it is inside
+    the upload folder, otherwise the file of that name in the root or cache."""
     name = file_name(url)
+    raw = re.sub(r"^[a-z]+://", "", (url or "").replace("\\", "/"), flags=re.I).lstrip("/")
+    raw = re.sub(r"^sdcard/", "", raw, flags=re.I)
+    base = root.resolve()
+    exact = (base / raw).resolve()
+    if exact.is_relative_to(base) and exact.is_file():
+        return root / exact.relative_to(base)
     for candidate in (root / name, root / "cache" / name):
         if candidate.is_file():
             return candidate

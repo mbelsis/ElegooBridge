@@ -51,6 +51,17 @@ class JobTests(unittest.TestCase):
         with self.assertRaises(jobs.JobError):
             jobs.find_upload(self.root, "ftp://missing.3mf")
 
+    def test_find_upload_uses_the_requested_folder(self):
+        (self.root / "cache").mkdir()
+        (self.root / "cube.gcode").write_text("old root copy")
+        (self.root / "cache" / "cube.gcode").write_text("new cache copy")
+        self.assertEqual(jobs.find_upload(self.root, "ftp:///cache/cube.gcode"), self.root / "cache" / "cube.gcode")
+        self.assertEqual(jobs.find_upload(self.root, "file:///sdcard/cache/cube.gcode"),
+                         self.root / "cache" / "cube.gcode")
+        self.assertEqual(jobs.find_upload(self.root, "ftp://cube.gcode"), self.root / "cube.gcode")
+        # A path outside the upload folder is never used, only the name.
+        self.assertEqual(jobs.find_upload(self.root, "ftp://../cache/cube.gcode"), self.root / "cube.gcode")
+
     def test_extracts_the_requested_plate(self):
         path = make_3mf(self.root / "cube.gcode.3mf", {
             "Metadata/plate_1.gcode": CENTAURI_GCODE + b";1", "Metadata/plate_2.gcode": CENTAURI_GCODE + b";2"})

@@ -35,7 +35,8 @@ def split_frames(buffer: bytes) -> tuple[list[bytes], bytes]:
     while True:
         start = buffer.find(SOI)
         if start < 0:
-            return frames, b""
+            # Keep a trailing FF: it may be the first half of the next SOI.
+            return frames, b"\xff" if buffer.endswith(b"\xff") else b""
         end = buffer.find(EOI, start + 2)
         if end < 0:
             buffer = buffer[start:]

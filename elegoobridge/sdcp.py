@@ -62,6 +62,8 @@ def check_command(cmd: int, data: dict[str, Any]) -> None:
 class _Frames:
     def __init__(self, sock: socket.socket) -> None:
         self.sock, self.buf = sock, b""
+        self._op: int | None = None   # the message being reassembled from fragments
+        self._fragments: list[bytes] = []
 
     def _need(self, size: int) -> None:
         while len(self.buf) < size:
@@ -71,8 +73,26 @@ class _Frames:
             self.buf += chunk
 
     def next(self) -> tuple[int, bytes]:
+        """The next whole message: fragments are joined, control frames
+        (which may arrive between fragments) are returned as they come. A
+        partly received message survives a read timeout."""
+        while True:
+            fin, op, payload = self._frame()
+            if op >= 0x8:
+                return op, payload
+            if op != 0x0:
+                self._op, self._fragments = op, []
+            elif self._op is None:
+                continue  # a continuation without its start
+            self._fragments.append(payload)
+            if fin:
+                message = (self._op, b"".join(self._fragments))
+                self._op, self._fragments = None, []
+                return message
+
+    def _frame(self) -> tuple[bool, int, bytes]:
         self._need(2)
-        op, size, pos = self.buf[0] & 0x0F, self.buf[1] & 0x7F, 2
+        fin, op, size, pos = bool(self.buf[0] & 0x80), self.buf[0] & 0x0F, self.buf[1] & 0x7F, 2
         if size == 126:
             self._need(4)
             size, pos = struct.unpack(">H", self.buf[2:4])[0], 4
@@ -81,7 +101,7 @@ class _Frames:
             size, pos = struct.unpack(">Q", self.buf[2:10])[0], 10
         self._need(pos + size)
         payload, self.buf = self.buf[pos:pos + size], self.buf[pos + size:]
-        return op, payload
+        return fin, op, payload
 
 
 def _frame(op: int, data: bytes) -> bytes:

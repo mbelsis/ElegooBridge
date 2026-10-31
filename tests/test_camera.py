@@ -75,6 +75,11 @@ class UnitTests(unittest.TestCase):
         self.assertEqual(rest, FRAME[:10])
         self.assertEqual(camera.split_frames(b"no jpeg here"), ([], b""))
 
+    def test_split_frames_across_a_read_that_ends_inside_the_start_marker(self):
+        frames, rest = camera.split_frames(b"--frame\r\n\r\n" + FRAME[:1])
+        frames2, rest2 = camera.split_frames(rest + FRAME[1:])
+        self.assertEqual(frames + frames2, [FRAME])
+
     def test_header_and_login(self):
         self.assertEqual(struct.unpack("<IIII", camera.frame_header(1234)), (1234, 0, 1, 0))
         self.assertEqual(camera.parse_login(login(b"abc123")), ("bblp", "abc123"))

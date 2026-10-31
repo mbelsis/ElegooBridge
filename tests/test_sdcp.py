@@ -134,6 +134,14 @@ class ClientTests(unittest.TestCase):
             self.client.request(259, {})
         self.assertNotIn(259, [cmd for cmd, _ in self.server.received])
 
+    def test_fragmented_messages_are_joined(self):
+        text = json.dumps({"Topic": f"sdcp/status/{BOARD}", "Status": {"PrintInfo": {"Status": 13}}}).encode()
+        first, second = text[:20], text[20:]
+        # Text frame without FIN, a ping in between, then the final continuation.
+        self.server.sock.sendall(bytes([0x01, len(first)]) + first + bytes([0x89, 0])
+                                 + bytes([0x80, len(second)]) + second)
+        self.wait(lambda: self.client.status.get("PrintInfo", {}).get("Status") == 13)
+
     def test_reconnects_after_the_printer_drops(self):
         self.server.drop_next = True
         self.client.request(sdcp.STATUS)
