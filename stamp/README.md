@@ -17,8 +17,10 @@ This creates **`stamp/dist/Stamp for Bambuddy.app`**. Move it to Applications or
 keep it in the Dock. Then:
 
 - **Drop** one or more `.gcode.3mf` files, or a whole folder, on the app. The
-  stamped copies appear next to the originals. A window lists what was stamped or
-  skipped, with a **Show in Finder** button.
+  stamped copies are saved **in the same folder as the originals**. For example,
+  `~/Downloads/cube.gcode.3mf` gives `~/Downloads/cube.bambuddy.gcode.3mf`. A
+  window lists what was stamped or skipped and where it was saved. **Show in
+  Finder** selects the stamped files.
 - Or **double-click** the app and choose the files.
 
 The app contains the script and runs it with the Mac's own Python. The first time,
@@ -35,6 +37,7 @@ macOS may say it can't verify the developer: right-click the app → **Open** �
    ```
    ```
    Stamped: cube.gcode.3mf -> cube.bambuddy.gcode.3mf
+     saved in /Users/you/Downloads
    ```
    Or a whole folder at once, for example your Downloads:
    ```sh
@@ -42,8 +45,10 @@ macOS may say it can't verify the developer: right-click the app → **Open** �
    ```
    Tip: type `python3 ` and the script's path, then drag the file from Finder into
    the Terminal window to fill in its path.
-3. Add the file ending in **`.bambuddy.gcode.3mf`** to Bambuddy's File Manager,
-   then print it on the Centauri card.
+3. **Add it to Bambuddy:** open Bambuddy → **File Manager** (left sidebar) →
+   **Upload**, and choose the file ending in **`.bambuddy.gcode.3mf`**. You can also
+   drag it from Finder onto the File Manager page. Then select it → **Print** →
+   choose the **Centauri Carbon**.
 
 Run it again after every new export. It never changes your original file and never
 overwrites an earlier stamped copy. Files already stamped are skipped.

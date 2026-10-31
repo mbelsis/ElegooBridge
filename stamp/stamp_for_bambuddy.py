@@ -119,6 +119,11 @@ def files_to_stamp(arguments: list[str]) -> list[Path]:
 
 
 def main(arguments: list[str]) -> int:
+    # --paths-file FILE: also write the stamped files' full paths there, one per
+    # line (used by the Mac app to select them in Finder).
+    paths_file = None
+    if arguments[:1] == ["--paths-file"] and len(arguments) > 1:
+        paths_file, arguments = Path(arguments[1]), arguments[2:]
     if not arguments or arguments[0] in ("-h", "--help"):
         print(__doc__.split("\n\nWhy:")[0])
         return 0 if arguments else 2
@@ -127,12 +132,18 @@ def main(arguments: list[str]) -> int:
         print("No .3mf files found.")
         return 1
     failed = 0
+    stamped = []
     for path in paths:
         try:
-            print(f"Stamped: {path.name} -> {stamp(path).name}")
+            target = stamp(path)
+            stamped.append(target)
+            print(f"Stamped: {path.name} -> {target.name}")
+            print(f"  saved in {target.parent}")
         except StampError as error:
             print(f"Skipped: {path.name}: {error}")
             failed += 1
+    if paths_file:
+        paths_file.write_text("".join(f"{p.resolve()}\n" for p in stamped))
     return 1 if failed else 0
 
 

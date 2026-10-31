@@ -87,6 +87,12 @@ class StampTests(unittest.TestCase):
         self.assertEqual(sorted(p.name for p in self.root.iterdir()), before)
         self.assertEqual(stamp_script.main([]), 2)
 
+    def test_paths_file_lists_the_stamped_files(self):
+        sliced_3mf(self.root / "a.gcode.3mf")
+        listing = self.root / "paths.txt"
+        stamp_script.main(["--paths-file", str(listing), str(self.root / "a.gcode.3mf")])
+        self.assertEqual(listing.read_text().splitlines(), [str((self.root / "a.bambuddy.gcode.3mf").resolve())])
+
     def test_output_names(self):
         self.assertEqual(output_path(Path("a/x.gcode.3mf")).name, "x.bambuddy.gcode.3mf")
         self.assertEqual(output_path(Path("x.3mf")).name, "x.bambuddy.gcode.3mf")

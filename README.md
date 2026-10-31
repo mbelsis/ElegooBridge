@@ -124,14 +124,17 @@ The stamp changes only that label, to P1S, so Bambuddy accepts the file.
    ```
    ```
    Stamped: cube.gcode.3mf -> cube.bambuddy.gcode.3mf
+     saved in /Users/you/Downloads
    ```
    To stamp every sliced file in a folder at once, give the folder:
    `python3 stamp/stamp_for_bambuddy.py ~/Downloads`. Files already stamped are
    skipped, so this is safe to repeat. On a Mac, you can type the command and then
    drag the file from Finder into the Terminal window to fill in its path.
-3. **Add the stamped file**, the one ending in `.bambuddy.gcode.3mf`, to
-   Bambuddy's **File Manager**. Then print it on the Centauri card. If asked about
-   AMS slots, choose the external spool.
+3. **Add the stamped file to Bambuddy.** It's saved next to the original, for
+   example `~/Downloads/cube.bambuddy.gcode.3mf`. In Bambuddy, open **File
+   Manager** (left sidebar) → **Upload**, or drag the file onto that page. Then
+   select it → **Print** → **Centauri Carbon**. If asked about AMS slots, choose
+   the external spool.
 
 **Re-slice, re-stamp.** If you change anything and export again, stamp the new
 export too. The stamp never changes your original file and never overwrites an
