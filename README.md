@@ -5,7 +5,7 @@
 ![Runs in Docker](https://img.shields.io/badge/runs%20in-Docker-2496ED?logo=docker&logoColor=white)
 ![Python 3.12](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
 ![Tested on Centauri Carbon V1.4.49](https://img.shields.io/badge/tested%20on-Centauri%20Carbon%20V1.4.49-orange)
-![Works with Bambuddy](https://img.shields.io/badge/works%20with-Bambuddy-00AE42)
+![Tested with Bambuddy 1.2.5.7](https://img.shields.io/badge/tested%20with-Bambuddy%201.2.5.7-00AE42)
 
 **Lets [Bambuddy](https://github.com/maziggy/bambuddy) manage an Elegoo Centauri
 Carbon alongside Bambu Lab printers.**
@@ -27,8 +27,9 @@ Bambuddy  --MQTT/TLS :8883-->  Mosquitto  <-->  ElegooBridge  --SDCP :3030-->  C
          (sees a Bambu P1S)
 ```
 
-Version **0.3.0**. Tested with Bambuddy and a Centauri Carbon (firmware V1.4.49),
-including a print sent from Bambuddy's queue.
+Version **0.3.0**. Tested with **Bambuddy 1.2.5.7** and a Centauri Carbon
+(firmware **V1.4.49**), including a print sent from Bambuddy's queue. Other
+versions will probably work, but haven't been tried.
 
 > [!WARNING]
 > **Before printing from Bambuddy:** sliced files must be stamped first, on your
@@ -83,7 +84,7 @@ The bridge refuses these and the printer does nothing:
 ## 🧪 Testing
 
 🖨️ **On a real printer.** Everything marked ✅ above was tested on a real Centauri
-Carbon (firmware V1.4.49) with Bambuddy: every printer command the bridge uses,
+Carbon (firmware V1.4.49) with Bambuddy 1.2.5.7: every printer command the bridge uses,
 a full print sent from Bambuddy's queue, pause, resume and stop, a power cut
 during a print and a filament runout. The results are in
 [`docs/FINDINGS.md`](docs/FINDINGS.md).
