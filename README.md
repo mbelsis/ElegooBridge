@@ -35,6 +35,10 @@ including a print sent from Bambuddy's queue.
 > own computer, with the **Stamp for Bambuddy** Mac app (drag and drop) or a
 > Python script. See [Printing from Bambuddy](#printing-from-bambuddy).
 
+> [!NOTE]
+> A hobby project, provided as is: **use it at your own risk.** See the
+> [Disclaimer](#disclaimer).
+
 ## 📸 Screenshots
 
 The Centauri Carbon in Bambuddy, through ElegooBridge:
@@ -408,3 +412,18 @@ and share it in any way, including in your own projects, as long as the licence
 notice stays with it. It comes with no warranty.
 
 ElegooBridge isn't affiliated with Elegoo, Bambu Lab or the Bambuddy project.
+
+<a id="disclaimer"></a>
+
+## ⚖️ Disclaimer
+
+> [!CAUTION]
+> ElegooBridge is a hobby project, provided **as is**, without warranty of any
+> kind. **Use it at your own risk.** The author accepts no responsibility for any
+> damage or loss caused by using it, including damage to your printer, failed or
+> faulty prints, lost material, or any other harm to people or property.
+>
+> A 3D printer heats up, moves and can run unattended: never leave a print
+> unsupervised because it was started remotely, and always check the printer is
+> safe to start (plate clear, filament loaded) before printing. See the
+> [MIT licence](LICENSE) for the full terms.
