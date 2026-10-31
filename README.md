@@ -17,8 +17,8 @@ Version **0.3.0**. Tested with Bambuddy and a Centauri Carbon (firmware V1.4.49)
 including a print sent from Bambuddy's queue.
 
 > **Before printing from Bambuddy:** sliced files must be stamped first, on your
-> own computer, with the script in the [`stamp/`](stamp/) folder. See
-> [Printing from Bambuddy](#printing-from-bambuddy).
+> own computer, with the **Stamp for Bambuddy** Mac app (drag and drop) or a
+> Python script. See [Printing from Bambuddy](#printing-from-bambuddy).
 
 ## Screenshots
 
@@ -91,9 +91,9 @@ with port 8883, so a second Centauri needs a second host or IP address.
 
 > **Important: stamp every file before you add it to Bambuddy.**
 > Files from ElegooSlicer (or OrcaSlicer with a Centauri profile) can't be printed
-> from Bambuddy as they are. Run them through
-> [`stamp/stamp_for_bambuddy.py`](stamp/stamp_for_bambuddy.py) first, each time you
-> export. It runs on your own computer, where you slice, not in Docker.
+> from Bambuddy as they are. Stamp them first, each time you export: drop them on
+> the **Stamp for Bambuddy** Mac app, or run the Python script. Both run on your
+> own computer, where you slice, not in Docker.
 
 ### Why
 
@@ -106,35 +106,75 @@ with a message like:
 
 The stamp changes only that label, to P1S, so Bambuddy accepts the file.
 
-### How
+### How: the three steps
 
 1. **Slice for the Centauri.** In ElegooSlicer, or OrcaSlicer with a Centauri
    Carbon profile, slice the plate, then choose **File → Export → Export plate
    sliced file**. You get a `.gcode.3mf` file. A project saved with **Save
-   project** has no G-code and won't print. The menu item is greyed out until
-   the plate is sliced.
-2. **Stamp it.** On a Mac, the easiest way is to drag the file onto **Stamp for
-   Bambuddy.app**, which `./stamp/build-mac-app.sh` builds; see
-   [`stamp/README.md`](stamp/README.md). Otherwise use the script in the
-   [`stamp/`](stamp/) folder. It's a single
-   file that needs only Python 3, already on macOS and Linux. You can copy it
-   anywhere, and run it from any folder:
-   ```sh
-   python3 stamp/stamp_for_bambuddy.py ~/Downloads/cube.gcode.3mf
-   ```
-   ```
-   Stamped: cube.gcode.3mf -> cube.bambuddy.gcode.3mf
-     saved in /Users/you/Downloads
-   ```
-   To stamp every sliced file in a folder at once, give the folder:
-   `python3 stamp/stamp_for_bambuddy.py ~/Downloads`. Files already stamped are
-   skipped, so this is safe to repeat. On a Mac, you can type the command and then
-   drag the file from Finder into the Terminal window to fill in its path.
-3. **Add the stamped file to Bambuddy.** It's saved next to the original, for
-   example `~/Downloads/cube.bambuddy.gcode.3mf`. In Bambuddy, open **File
-   Manager** (left sidebar) → **Upload**, or drag the file onto that page. Then
-   select it → **Print** → **Centauri Carbon**. If asked about AMS slots, choose
-   the external spool.
+   project** has no G-code and can't be stamped. The menu item is greyed out
+   until the plate is sliced.
+2. **Stamp it**, with the Mac app or the Python script (both below). The stamped
+   copy is saved **next to the original**, with `.bambuddy.gcode.3mf` at the end:
+   `~/Downloads/cube.gcode.3mf` → `~/Downloads/cube.bambuddy.gcode.3mf`.
+3. **Add the stamped file to Bambuddy.** Open **File Manager** in the left sidebar
+   → **Upload**, or drag the file onto that page. Then select it → **Print** →
+   **Centauri Carbon**. If asked about AMS slots, choose the external spool.
+
+### Stamping with the Mac app (easiest)
+
+**Stamp for Bambuddy.app** is a drag-and-drop app. Build it once, in this folder;
+it needs only macOS:
+
+```sh
+./stamp/build-mac-app.sh
+```
+
+It's created in `stamp/dist/Stamp for Bambuddy.app`. Move it to **Applications**,
+or drag it into the Dock. Then:
+
+- **Drop** one or more sliced `.gcode.3mf` files, or a whole folder, onto the app.
+- Or **double-click** the app and choose the files.
+
+A window shows what was stamped and where it was saved. **Show in Finder** selects
+the stamped files, ready to drag into Bambuddy.
+
+![The Stamp for Bambuddy window after stamping a file](Screenshots/FileStamp.png)
+
+If a file can't be stamped, for example a project without sliced G-code or a file
+for another printer, the window says why and what to do instead.
+
+The first time you open it, macOS may say it can't verify the developer. Right-click
+the app → **Open** → **Open**. It's built and signed on your own Mac, not
+notarised by Apple.
+
+### Stamping with Python (Mac, Linux or Windows)
+
+The app is a wrapper around one self-contained script,
+[`stamp/stamp_for_bambuddy.py`](stamp/stamp_for_bambuddy.py). It needs only
+Python 3: already installed on macOS and Linux; on Windows, install it from
+python.org. Run it from any folder, or copy the file anywhere.
+
+```sh
+# one file
+python3 stamp/stamp_for_bambuddy.py ~/Downloads/cube.gcode.3mf
+
+# several files
+python3 stamp/stamp_for_bambuddy.py cube.gcode.3mf vase.gcode.3mf
+
+# every sliced file in a folder
+python3 stamp/stamp_for_bambuddy.py ~/Downloads
+```
+
+```
+Stamped: cube.gcode.3mf -> cube.bambuddy.gcode.3mf
+  saved in /Users/you/Downloads
+Skipped: project.3mf: no sliced G-code inside: slice the plate, then use "Export plate sliced file"
+```
+
+Files that are already stamped, or already have a stamped copy, are skipped, so
+running it again over a folder is safe. On Windows, use `py` instead of `python3`.
+On a Mac, you can type the command and then drag the file from Finder into the
+Terminal window to fill in its path.
 
 **Re-slice, re-stamp.** If you change anything and export again, stamp the new
 export too. The stamp never changes your original file and never overwrites an
