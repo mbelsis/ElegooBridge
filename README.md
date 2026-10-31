@@ -7,6 +7,13 @@ ElegooBridge runs in Docker next to Bambuddy. It talks to the Centauri in its ow
 protocol (SDCP over a local WebSocket) and presents it to Bambuddy as a Bambu LAN
 printer. Bambuddy itself is not modified.
 
+ElegooBridge follows the same idea as
+[klipper-bambuddy](https://github.com/ooniiik/klipper-bambuddy), which does this
+for Klipper printers: a small bridge that speaks the printer's own protocol on
+one side and imitates a Bambu printer on the other, so
+Bambuddy works with it unchanged. ElegooBridge uses the same Bambu report fields
+and applies the approach to Elegoo's SDCP protocol.
+
 ```
 Bambuddy  --MQTT/TLS :8883-->  Mosquitto  <-->  ElegooBridge  --SDCP :3030-->  Centauri Carbon
           --FTPS :990------------------------->  (uploads)    --HTTP :80---->  (G-code)
@@ -49,11 +56,27 @@ The Centauri Carbon in Bambuddy, through ElegooBridge:
 | **Printing from Bambuddy** (library, queue): files must be stamped, see below | ✓ |
 | A refused print shows on the card at once as a failed job with a Bambu error, e.g. `0500_4037` "not compatible with current printer model" | ✓ |
 | File manager: the files Bambuddy uploaded | ✓ |
-| Extruder jog, AMS / CANVAS, the Centauri's own stored files, other G-code | No |
 
-The bridge is tested against a fake Centauri. The Centauri commands it uses were
-each tested on a real Centauri Carbon, firmware V1.4.49: see
+**Not supported yet** (the bridge refuses these and the printer does nothing):
+
+| In Bambuddy | Why |
+| --- | --- |
+| Extruder jog (extrude / retract buttons) | The Centauri has no documented command for it, and the bridge only sends tested commands |
+| AMS filament slots and colours | The Centauri's CANVAS unit isn't mapped to Bambu's AMS yet; prints use the loaded filament |
+| Files already stored on the Centauri (e.g. sent from ElegooSlicer) | The file manager shows only the files Bambuddy uploaded; planned, see [Plan](#plan) |
+| Any other G-code command | The Centauri doesn't accept raw G-code. The bridge translates temperatures (M104/M109, M140/M190), fans (M106/M107), X/Y/Z moves (G0/G1, G90/G91) and homing (G28) |
+
+## Testing
+
+**On a real printer.** Everything marked ✓ above was tested on a real Centauri
+Carbon (firmware V1.4.49) with Bambuddy: every printer command the bridge uses,
+a full print sent from Bambuddy's queue, pause, resume and stop, a power cut
+during a print and a filament runout. The results are in
 [`docs/FINDINGS.md`](docs/FINDINGS.md).
+
+**Automated tests.** The project's tests (see [Development](#development)) check the bridge's
+own code against a simulated Centauri that answers like the real one, so they run
+in seconds without a printer switched on.
 
 ## Set up
 
@@ -88,12 +111,25 @@ Press Enter to accept the suggested values. At the end you'll see something like
 ```
 ElegooBridge is running and connected to the printer.
 
-Now add the printer in Bambuddy (Printers > Add printer):
+Now add the printer in Bambuddy (Printers > Add Printer):
   Model:          P1S
-  IP address:     192.168.1.20
-  Serial number:  0390000ELEGOO01
-  Access code:    48213907
+  IP address:     192.168.1.20      this computer, not the printer
+  Serial number:  0390000ELEGOO01   made up: a Bambu-style name for the bridge
+  Access code:    48213907          random: a password for the bridge
 ```
+
+The Centauri has no serial number or access code that Bambuddy could use, so the
+bridge provides both:
+
+- **Serial number:** made up. Bambuddy needs a Bambu-style serial (15 letters
+  and digits) to address the printer, so the bridge uses `0390000ELEGOO01`.
+  You can choose your own in `.env` (`BAMBU_SERIAL`), for example
+  `0390000ELEGOO02` for a second bridge, or `01P00ACENTAUR01`. It isn't the
+  Centauri's real ID (that is `PRINTER_MAINBOARD_ID`, which only the bridge uses).
+- **Access code:** a random 8-digit code the setup script creates
+  (`ACCESS_CODE` in `.env`), or any password you type, up to 20 characters.
+  Bambuddy must send it to use the bridge, its file upload and its camera. The
+  Centauri itself has no password.
 
 Run the script again at any time. It keeps your settings unless you choose to
 change them, and restarts the bridge with any updates.
@@ -120,16 +156,25 @@ change them, and restarts the bridge with any updates.
 
 ### Add the printer in Bambuddy
 
-In Bambuddy: **Printers → Add printer**, then:
+Bambuddy sees the bridge as a Bambu Lab **P1S**, so you add it like a P1S. The
+setup script prints the values to use; they are also in `.env`.
 
-| Field | Value |
-| --- | --- |
-| Model | **P1S**: enclosed, same 256 mm build volume, and the same three fans |
-| IP address | The computer running ElegooBridge (`BRIDGE_HOST_IP`), **not** the printer |
-| Serial number | `BAMBU_SERIAL` from `.env` |
-| Access code | `ACCESS_CODE` from `.env` |
+1. Open Bambuddy in your browser and go to **Printers**.
+2. Click **Add Printer**. Bambuddy's network scan won't find the bridge, so fill
+   in the form by hand:
 
-Leave **External camera** off: the camera works through the bridge.
+   | Field | Enter |
+   | --- | --- |
+   | Name | Anything, e.g. `Centauri Carbon` |
+   | IP Address | The computer running ElegooBridge (`BRIDGE_HOST_IP`), **not** the printer's IP |
+   | Serial Number | `BAMBU_SERIAL` from `.env` (default `0390000ELEGOO01`) |
+   | Access Code | `ACCESS_CODE` from `.env` |
+   | Model | **P1S**: enclosed, same 256 mm build volume, and the same three fans |
+
+3. Save. Within a few seconds the card shows the Centauri's state and
+   temperatures. If it stays offline, check `docker compose logs -f bridge`.
+4. Leave **External camera** off in the printer's settings: the camera works
+   through the bridge.
 
 **One bridge per printer.** Bambuddy expects each printer on its own IP address
 with port 8883, so a second Centauri needs a second host or IP address.

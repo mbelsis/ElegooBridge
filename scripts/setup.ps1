@@ -128,11 +128,11 @@ if ($connected) {
     Write-Host "Check the printer is on, then look at: docker compose logs -f bridge"
 }
 Write-Host ""
-Write-Host "Now add the printer in Bambuddy (Printers > Add printer):"
+Write-Host "Now add the printer in Bambuddy (Printers > Add Printer):"
 Write-Host "  Model:          P1S"
-Write-Host ("  IP address:     " + $settings["BRIDGE_HOST_IP"])
-Write-Host ("  Serial number:  " + $settings["BAMBU_SERIAL"])
-Write-Host ("  Access code:    " + $settings["ACCESS_CODE"])
+Write-Host ("  IP address:     " + $settings["BRIDGE_HOST_IP"] + "      this computer, not the printer")
+Write-Host ("  Serial number:  " + $settings["BAMBU_SERIAL"] + "   made up: a Bambu-style name for the bridge")
+Write-Host ("  Access code:    " + $settings["ACCESS_CODE"] + "          random: a password for the bridge")
 Write-Host ""
 Write-Host "Before printing from Bambuddy, stamp your sliced files: see stamp\README.md"
 Read-Host "Press Enter to close"
