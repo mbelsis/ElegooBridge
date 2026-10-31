@@ -1,6 +1,6 @@
 import unittest
 
-from elegoobridge.mapper import Mapper, fan_level, job_number, speed_level
+from elegoobridge.mapper import Mapper, fan_level, job_number, speed_level, version_report
 
 
 def status(code, layer=0, total=128, progress=0, ticks=0.0, total_ticks=805, filename="cube.gcode",
@@ -117,12 +117,16 @@ class FieldTests(unittest.TestCase):
         self.assertEqual((r["gcode_state"], r["stg_cur"]), ("IDLE", 13))
         self.assertEqual(report(Mapper(), 0, filename="", current=0)["stg_cur"], 255)
 
+    def test_version_never_looks_outdated(self):
+        version = version_report("SERIAL", "1")["info"]["module"][0]["sw_ver"]
+        self.assertTrue(version.startswith("99."))
+
     def test_reports_developer_mode(self):
         self.assertEqual(Mapper().update(status(0))["fun"], "0")
 
     def test_scales(self):
         self.assertEqual([fan_level(p) for p in (0, 50, 68, 100, 140)], ["0", "8", "10", "15", "15"])
-        self.assertEqual([speed_level(p) for p in (50, 100, 125, 166)], [1, 2, 3, 4])
+        self.assertEqual([speed_level(p) for p in (50, 100, 130, 160)], [1, 2, 3, 4])
         self.assertEqual(job_number(""), "0")
 
 

@@ -17,7 +17,7 @@ from typing import Any
 
 import paho.mqtt.client as mqtt
 
-from elegoobridge import sdcp
+from elegoobridge import jobs, sdcp, upload
 from elegoobridge.commands import Action, translate
 from elegoobridge.config import Config
 from elegoobridge.mapper import PAUSE_STATES, REASONS, Mapper, version_report
@@ -135,6 +135,8 @@ class Bridge:
                 log.info("sent command %s %s", cmd, json.dumps(data))
             except sdcp.SdcpError as error:
                 log.warning("command %s failed: %s", cmd, error)
+        if action.start is not None:
+            self._start_job(action.start)
         if action.light is not None:
             self._set_light(action.light)
         if action.clear_error:
@@ -146,6 +148,45 @@ class Bridge:
             self.mqtt.publish(self.report_topic, json.dumps(version_report(self.cfg.serial, _sequence())), qos=0)
         if action.push_status and self.printer.status:
             self._publish_status(self.printer.status)
+
+    def _start_job(self, block: dict[str, Any]) -> None:
+        """Print a file Bambuddy uploaded: extract the plate, upload it, start it."""
+        command = str(block.get("command") or "project_file")
+        result, reason = "failed", ""
+        try:
+            if any(code != 0 for code in self.printer.status.get("CurrentStatus") or []):
+                raise jobs.JobError("the printer is busy")
+            url = str(block.get("url") or block.get("param") or "")
+            plate = str(block.get("param") or "") if command == "project_file" else ""
+            source = jobs.find_upload(self.cfg.ftp_root, url)
+            gcode = jobs.extract_gcode(source, plate)
+            name = jobs.printer_file_name(url, str(block.get("subtask_name") or ""))
+            log.info("uploading %s (%s bytes) from %s to the printer", name, len(gcode), source.name)
+            upload.upload(self.cfg.printer_host, name, gcode)
+            self._wait_for_file(name)
+            self.printer.request(sdcp.START, {
+                "Filename": name, "StartLayer": 0, "Calibration_switch": 1, "PrintPlatformType": 0,
+                "Tlp_Switch": 0, "slot_map": [], "path_prefix": "/local",
+            })
+            log.info("print started: %s", name)
+            result = "success"
+        except (jobs.JobError, upload.UploadError, sdcp.SdcpError, OSError) as error:
+            reason = str(error)
+            log.warning("print not started: %s", reason)
+        reply = {"print": {"command": command, "sequence_id": str(block.get("sequence_id") or "0"), "result": result}}
+        if reason:
+            reply["print"]["reason"] = reason
+        self.mqtt.publish(self.report_topic, json.dumps(reply), qos=0)
+
+    def _wait_for_file(self, name: str, timeout: float = 15.0) -> None:
+        # A new upload appears in the printer's file list a moment later.
+        end = time.time() + timeout
+        while time.time() < end:
+            files = self.printer.request(sdcp.FILE_LIST, {"Url": "/local"}).get("FileList") or []
+            if any(str(f.get("name", "")).endswith("/" + name) for f in files):
+                return
+            time.sleep(1)
+        raise jobs.JobError(f"{name} did not appear on the printer after uploading")
 
     def _set_light(self, on: bool) -> None:
         # On V1.4.49 the light toggles on every command. 0 turns it on from off,
@@ -175,6 +216,14 @@ class Bridge:
             self.cfg.printer_host, self.cfg.mqtt_host, self.cfg.mqtt_port, self.cfg.serial,
         )
         threading.Thread(target=self._worker, name="commands", daemon=True).start()
+        if self.cfg.ftp_enable:
+            from elegoobridge.ftp_server import start_ftps
+
+            start_ftps(
+                root=self.cfg.ftp_root, certfile=self.cfg.ftp_cert, keyfile=self.cfg.ftp_key,
+                password=self.cfg.mqtt_password, masquerade=self.cfg.ftp_passive_ip,
+                passive=range(self.cfg.ftp_passive_start, self.cfg.ftp_passive_end + 1), port=self.cfg.ftp_port,
+            )
         self.mqtt.connect_async(self.cfg.mqtt_host, self.cfg.mqtt_port, keepalive=30)
         self.mqtt.loop_start()
         self.printer.start()

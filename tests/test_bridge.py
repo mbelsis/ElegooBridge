@@ -1,6 +1,8 @@
 """The whole bridge: fake Centauri on one side, a recording MQTT stand-in on the other."""
 import json
+import tempfile
 import threading
+from pathlib import Path
 import time
 import unittest
 
@@ -11,6 +13,8 @@ except ImportError:  # paho-mqtt not installed
 
 from elegoobridge import sdcp
 from elegoobridge.config import Config
+from elegoobridge import upload
+from tests.test_jobs import CENTAURI_GCODE, P1S_GCODE, make_3mf
 from tests.test_sdcp import BOARD, FakePrinter
 
 
@@ -45,7 +49,17 @@ class BridgeTests(unittest.TestCase):
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
         cfg = Config(printer_host="127.0.0.1", mainboard_id=BOARD, serial="0390000ELEGOO01", mqtt_host="x",
                      mqtt_port=1883, mqtt_user="bblp", mqtt_password="code", mqtt_tls=False)
+        self.spool = tempfile.TemporaryDirectory()
+        cfg.__dict__["ftp_root"] = Path(self.spool.name)
         self.bridge = Bridge(cfg)
+        self.uploads = []
+        self.real_upload = upload.upload
+
+        def fake_upload(host, name, data, **kwargs):
+            self.uploads.append((name, data))
+            self.server.files.append(name)
+
+        upload.upload = fake_upload
         self.bridge.printer.port = self.server.server_address[1]
         self.mqtt = self.bridge.mqtt = FakeMqtt()
         threading.Thread(target=self.bridge._worker, daemon=True).start()
@@ -53,6 +67,8 @@ class BridgeTests(unittest.TestCase):
         self.wait(lambda: self.mqtt.reports())
 
     def tearDown(self):
+        upload.upload = self.real_upload
+        self.spool.cleanup()
         self.bridge.printer.close()
         self.server.shutdown()
         self.server.server_close()
@@ -128,6 +144,43 @@ class BridgeTests(unittest.TestCase):
         self.command({"print": {"command": "gcode_line", "param": "M140 S50"}})
         self.wait(lambda: (sdcp.SET_PARAMS, {"TempTargetHotbed": 50}) in self.server.received)
         self.assertNotIn(sdcp.MOVE_AXIS, [cmd for cmd, _ in self.server.received])
+
+    def replies(self, command):
+        return [b["print"] for _, b in self.mqtt.published if b.get("print", {}).get("command") == command]
+
+    def start(self, name, plate="Metadata/plate_1.gcode"):
+        before = len(self.replies("project_file"))
+        self.command({"print": {"command": "project_file", "url": f"ftp://{name}", "param": plate,
+                                "subtask_name": name.replace(".gcode.3mf", ""), "sequence_id": "77"}})
+        self.wait(lambda: len(self.replies("project_file")) > before)
+        return self.replies("project_file")[-1]
+
+    def test_project_file_uploads_the_plate_and_starts_it(self):
+        make_3mf(Path(self.spool.name) / "cube.gcode.3mf", {"Metadata/plate_1.gcode": CENTAURI_GCODE})
+        reply = self.start("cube.gcode.3mf")
+        self.assertEqual(reply["result"], "success", reply)
+        self.assertEqual(self.uploads, [("cube.gcode", CENTAURI_GCODE)])
+        starts = [d for c, d in self.server.received if c == sdcp.START]
+        self.assertEqual(starts[0]["Filename"], "cube.gcode")
+        self.assertEqual(starts[0]["path_prefix"], "/local")
+
+    def test_gcode_for_another_printer_is_never_uploaded(self):
+        make_3mf(Path(self.spool.name) / "p1s.gcode.3mf", {"Metadata/plate_1.gcode": P1S_GCODE})
+        reply = self.start("p1s.gcode.3mf")
+        self.assertEqual(reply["result"], "failed")
+        self.assertIn("Bambu Lab P1S", reply["reason"])
+        self.assertEqual(self.uploads, [])
+        self.assertNotIn(sdcp.START, [c for c, _ in self.server.received])
+
+    def test_no_start_while_busy_or_missing(self):
+        reply = self.start("missing.gcode.3mf")
+        self.assertEqual(reply["result"], "failed")
+        make_3mf(Path(self.spool.name) / "cube.gcode.3mf", {"Metadata/plate_1.gcode": CENTAURI_GCODE})
+        self.server.push(printing(13))
+        self.wait(lambda: 1 in self.bridge.printer.status.get("CurrentStatus", []))
+        reply = self.start("cube.gcode.3mf")
+        self.assertEqual((reply["result"], reply["reason"]), ("failed", "the printer is busy"))
+        self.assertEqual(self.uploads, [])
 
     def test_version_reply(self):
         self.command({"info": {"command": "get_version", "sequence_id": "3"}})

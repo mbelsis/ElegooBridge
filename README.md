@@ -9,11 +9,12 @@ printer. Bambuddy itself is not modified.
 
 ```
 Bambuddy  --MQTT/TLS :8883-->  Mosquitto  <-->  ElegooBridge  --SDCP :3030-->  Centauri Carbon
+          --FTPS :990------------------------->  (uploads)    --HTTP :80---->  (G-code)
          (sees a Bambu P1S)
 ```
 
-Version **0.1.0**, phase 1 of the plan below. **Not yet tested with a real
-Bambuddy.**
+Version **0.2.0**. Tested with Bambuddy and a Centauri Carbon (firmware V1.4.49),
+including a print sent from Bambuddy's queue.
 
 ## What works
 
@@ -29,8 +30,9 @@ Bambuddy.**
 | Home and X/Y/Z jog (the printer must be homed before jogging) | ✓ |
 | Camera, through Bambuddy's external camera: MJPEG, `http://PRINTER_IP:3031/video` | ✓ |
 | Offline when the Centauri is off (after Bambuddy's 60 s timeout) | ✓ |
-| **Starting prints from Bambuddy** | Not yet (phase 2) |
-| Extruder jog, AMS / CANVAS, file manager, other G-code | No |
+| **Printing from Bambuddy** (library, queue): files must be stamped, see below | ✓ |
+| File manager: the files Bambuddy uploaded | ✓ |
+| Extruder jog, AMS / CANVAS, the Centauri's own stored files, other G-code | No |
 
 The bridge is tested against a fake Centauri. The Centauri commands it uses were
 each tested on a real Centauri Carbon, firmware V1.4.49: see
@@ -65,6 +67,28 @@ You need Docker, and the Centauri on the same network.
    | Serial number | `BAMBU_SERIAL` from `.env` |
    | Access code | `ACCESS_CODE` from `.env` |
 
+## Printing from Bambuddy
+
+Bambuddy only sends a file to a printer of the model it was sliced for, and the
+card is a P1S. So Centauri files need a label change first:
+
+1. In ElegooSlicer, or OrcaSlicer with a Centauri Carbon profile, slice the plate
+   and use **File → Export → Export plate sliced file** (`.gcode.3mf`).
+2. Stamp it, from this folder:
+   ```sh
+   python3 -m elegoobridge stamp ~/Downloads/cube.gcode.3mf
+   ```
+   This writes `cube.bambuddy.gcode.3mf` next to it. Only two labels change: the
+   printer model in `slice_info.config` and in `project_settings.config`. The
+   G-code is copied unchanged. Files not sliced for a Centauri are refused.
+3. Add the stamped file to Bambuddy's **File Manager**, then print it on the
+   Centauri card. Choose the external spool if asked about AMS slots.
+
+When Bambuddy starts the print, the bridge:
+- takes the plate's G-code out of the file;
+- **checks it was sliced for a Centauri Carbon**, and refuses anything else;
+- uploads it to the printer, then starts it.
+
 **One bridge per printer.** Bambuddy expects each printer on its own IP address
 with port 8883, so a second Centauri needs a second host or IP address.
 
@@ -89,20 +113,27 @@ it.
   commands can crash the printer's software.
 - Other G-code from Bambuddy, such as moves or homing, is logged and ignored.
 - Temperatures above 300 °C (nozzle) or 110 °C (bed) are refused.
+- **Only print files can be uploaded** (`.gcode.3mf`, `.3mf`, `.gcode`). A Bambu
+  firmware file, which Bambuddy's "update firmware" would upload, is refused, so
+  nothing can try to update the Centauri. The bridge also reports version
+  `99.01.04.49`, so Bambuddy never offers a Bambu update for it.
+- Only G-code sliced for a Centauri Carbon is ever sent to the printer.
+- Moves and homing are refused while the printer is busy or homing.
 - The Centauri's own network port has no password. Anything on your LAN can
   control it, with or without this bridge.
 
 ## Plan
 
 1. ~~Research the protocol~~: done, see [`docs/FINDINGS.md`](docs/FINDINGS.md).
-2. **Phase 1, status and control:** this version.
-3. **Phase 2, starting prints:**
-   - an FTPS server on port 990 for Bambuddy's uploads;
-   - extract the plate G-code from the `.gcode.3mf`;
-   - upload it to the Centauri and start it;
-   - mark Centauri-sliced files so Bambuddy accepts them for a P1S card, as
-     [klipper-bambuddy](https://github.com/ooniiik/klipper-bambuddy) does.
-4. Test with a real Bambuddy; publish a Docker image.
+2. ~~Phase 1, status and control~~: done.
+3. ~~Phase 2, printing from Bambuddy~~: done.
+4. Next:
+   - report a refused print to Bambuddy at once, with the reason (today its
+     90-second watchdog notices);
+   - show the Centauri's own stored files;
+   - switch the camera on through SDCP (386) after a restart;
+   - answer the power-loss prompt from Bambuddy (134 / 135);
+   - publish a Docker image.
 
 ## Development
 
@@ -111,15 +142,20 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python -m unittest discover -s tests -t .
 ```
 
-The tests use a fake Centauri and a stand-in MQTT client, so no printer or broker
-is needed. Without `paho-mqtt`, the bridge tests are skipped.
+The tests use a fake Centauri, a stand-in MQTT client and a real local FTPS
+server, so no printer or broker is needed. Without the requirements installed,
+the bridge and FTPS tests are skipped.
 
 | Path | What |
 | --- | --- |
 | `elegoobridge/sdcp.py` | Centauri client: connection, keep-alive, reconnect, allow-listed commands, history |
 | `elegoobridge/mapper.py` | Centauri status → Bambu `push_status` report |
 | `elegoobridge/commands.py` | Bambuddy commands → Centauri commands |
-| `elegoobridge/bridge.py` | Connects the two; reads pause reasons |
+| `elegoobridge/bridge.py` | Connects the two; reads pause reasons; starts prints |
+| `elegoobridge/ftp_server.py` | FTPS server for Bambuddy's uploads (print files only, binary, Bambu-style TLS) |
+| `elegoobridge/jobs.py` | Finds the upload, extracts the plate, checks it was sliced for a Centauri |
+| `elegoobridge/upload.py` | Uploads G-code to the Centauri over HTTP |
+| `elegoobridge/stamp.py` | Labels Centauri `.gcode.3mf` files for Bambuddy's P1S card |
 | `docs/` | Protocol findings and the test log |
 | `tools/` | The scripts used to work out the protocol |
 | `local/` | Private: your printer's details and raw recordings. Ignored by git. |

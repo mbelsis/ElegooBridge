@@ -60,8 +60,10 @@ class CommandTests(unittest.TestCase):
         self.assertEqual((on.light, off.light, second.light), (True, False, None))
 
     def test_speed_levels(self):
-        action = translate({"print": {"command": "print_speed", "param": "3"}})
-        self.assertEqual(action.sdcp, [(sdcp.SET_PARAMS, {"PrintSpeedPct": 125})])
+        for level, pct in (("1", 50), ("2", 100), ("3", 130), ("4", 160)):
+            action = translate({"print": {"command": "print_speed", "param": level}})
+            self.assertEqual(action.sdcp, [(sdcp.SET_PARAMS, {"PrintSpeedPct": pct})])
+        self.assertEqual(translate({"print": {"command": "print_speed", "param": "9"}}).sdcp, [])
 
     def test_info_and_errors(self):
         self.assertTrue(translate({"pushing": {"command": "pushall"}}).push_status)
@@ -69,12 +71,17 @@ class CommandTests(unittest.TestCase):
         self.assertTrue(translate({"print": {"command": "clean_print_error"}}).clear_error)
 
     def test_unknown_commands_send_nothing(self):
-        for payload in ({"print": {"command": "project_file"}}, {"print": {"command": "ams_control"}},
+        for payload in ({"print": {"command": "ams_control"}}, {"upgrade": {"command": "start"}},
                         {"camera": {"command": "ipcam_record_set"}}, {}):
             with self.subTest(payload=payload):
                 action = translate(payload)
                 self.assertEqual(action.sdcp, [])
-        self.assertEqual(translate({"print": {"command": "project_file"}}).reply["print"]["result"], "failed")
+        self.assertEqual(translate({"print": {"command": "ams_control"}}).reply["print"]["result"], "failed")
+
+    def test_project_file_starts_a_job(self):
+        block = {"command": "project_file", "url": "ftp://cube.gcode.3mf", "param": "Metadata/plate_1.gcode"}
+        action = translate({"print": block})
+        self.assertEqual((action.start, action.sdcp, action.reply), (block, [], None))
 
     def test_every_translated_command_passes_the_allow_list(self):
         texts = ["M104 S210", "M140 S60", "M106 P1 S255\nM106 P2 S10\nM106 P3 S20", "M107",

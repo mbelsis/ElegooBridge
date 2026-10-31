@@ -24,6 +24,17 @@ services:
       MQTT_HOST: mosquitto
       MQTT_PORT: "1883"
       MQTT_PASSWORD: ${ACCESS_CODE}
+      # Bambuddy reaches FTPS at this address: the IP of the computer running ElegooBridge.
+      FTP_PASSIVE_IP: ${BRIDGE_HOST_IP:?set BRIDGE_HOST_IP in .env}
+    ports:
+      - "990:990"
+      - "50000-50009:50000-50009"
+    volumes:
+      - ./mosquitto/certs:/certs:ro
+      - print_files:/data/ftp
     depends_on:
       - mosquitto
     restart: unless-stopped
+
+volumes:
+  print_files:

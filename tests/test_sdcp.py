@@ -43,6 +43,7 @@ class FakePrinter(socketserver.ThreadingTCPServer):
         self.history = {"HistoryData": ["t1"], "detail": [{"TaskId": "t1", "TaskStatus": 5, "ErrorStatusReason": 45}]}
         self.drop_next = False
         self.status = {"CurrentStatus": [0], "PrintInfo": {"Status": 0}}
+        self.files = []
         self.sock = None
 
     def push(self, status):
@@ -75,6 +76,8 @@ class Handler(socketserver.BaseRequestHandler):
                 reply["HistoryData"] = server.history["HistoryData"]
             elif data["Cmd"] == 321:
                 reply["HistoryDetailList"] = server.history["detail"]
+            elif data["Cmd"] == 258:
+                reply["FileList"] = [{"name": f"/local/{n}", "type": 1} for n in server.files]
             sock.sendall(server_frame(json.dumps({
                 "Topic": f"sdcp/response/{BOARD}",
                 "Data": {"Cmd": data["Cmd"], "RequestID": data["RequestID"], "Data": reply}})))

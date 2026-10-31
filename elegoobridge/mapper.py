@@ -176,13 +176,18 @@ class Mapper:
         }
 
 
+# Reported as 99.xx so Bambuddy never offers a Bambu firmware update for this
+# printer; the Centauri's real version (V1.4.49) is the last three groups.
+FIRMWARE_VERSION = "99.01.04.49"
+
+
 def version_report(serial: str, sequence_id: str) -> dict[str, Any]:
     return {
         "info": {
             "command": "get_version",
             "sequence_id": sequence_id,
             "module": [
-                {"name": "ota", "sw_ver": "01.04.49.00", "hw_ver": "AP05", "sn": serial, "flag": 0},
+                {"name": "ota", "sw_ver": FIRMWARE_VERSION, "hw_ver": "AP05", "sn": serial, "flag": 0},
                 {"name": "mc", "sw_ver": "00.00.00.00", "hw_ver": "MC07", "sn": serial, "flag": 0},
             ],
         }

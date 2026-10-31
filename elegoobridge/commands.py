@@ -14,8 +14,9 @@ from elegoobridge import sdcp
 MAX_NOZZLE = 300
 MAX_BED = 110
 
-# Bambu speed levels -> Centauri PrintSpeedPct
-SPEED_LEVELS = {1: 50, 2: 100, 3: 125, 4: 166}
+# Bambu speed levels -> Centauri PrintSpeedPct: the four speeds the printer's own
+# control panel offers (Silent, Balanced, Sport, Ludicrous).
+SPEED_LEVELS = {1: 50, 2: 100, 3: 130, 4: 160}
 
 # M106 P<n> fan index -> Centauri fan name
 FANS = {1: "ModelFan", 2: "AuxiliaryFan", 3: "BoxFan"}
@@ -28,6 +29,7 @@ class Action:
     clear_error: bool = False
     push_status: bool = False
     version: bool = False
+    start: dict[str, Any] | None = None   # a project_file command to print
     reply: dict[str, Any] | None = None
     unsupported: list[str] = field(default_factory=list)
 
@@ -108,6 +110,8 @@ def translate(payload: dict[str, Any]) -> Action:
             action.sdcp.append((sdcp.SET_PARAMS, {"PrintSpeedPct": SPEED_LEVELS[level]}))
         else:
             action.unsupported.append(f"print_speed {level}")
+    elif family == "print" and command in ("project_file", "gcode_file"):
+        action.start = block
     elif family == "print" and command == "clean_print_error":
         action.clear_error = True
         action.push_status = True
@@ -116,7 +120,7 @@ def translate(payload: dict[str, Any]) -> Action:
             action.light = block.get("led_mode") == "on"
     else:
         action.unsupported.append(f"{family}.{command}")
-    if family == "print" and command not in ("pause", "resume", "stop"):
+    if family == "print" and command not in ("pause", "resume", "stop", "project_file", "gcode_file"):
         result = "failed" if action.unsupported and not action.sdcp else "success"
         action.reply = {"print": {"command": command, "sequence_id": sequence, "result": result}}
     return action
