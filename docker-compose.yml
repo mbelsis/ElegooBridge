@@ -1,0 +1,29 @@
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    # The password file is rebuilt from ACCESS_CODE on every start.
+    command: >
+      sh -c "rm -f /mosquitto/data/passwd && mosquitto_passwd -b -c /mosquitto/data/passwd bblp \"$$ACCESS_CODE\" &&
+             chown mosquitto:mosquitto /mosquitto/data/passwd && chmod 0700 /mosquitto/data/passwd &&
+             exec mosquitto -c /mosquitto/config/mosquitto.conf"
+    environment:
+      ACCESS_CODE: ${ACCESS_CODE:?set ACCESS_CODE in .env}
+    ports:
+      - "8883:8883"
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./mosquitto/certs:/mosquitto/certs:ro
+    restart: unless-stopped
+
+  bridge:
+    build: .
+    environment:
+      PRINTER_HOST: ${PRINTER_HOST:?set PRINTER_HOST in .env}
+      PRINTER_MAINBOARD_ID: ${PRINTER_MAINBOARD_ID:?set PRINTER_MAINBOARD_ID in .env}
+      BAMBU_SERIAL: ${BAMBU_SERIAL:-0390000ELEGOO01}
+      MQTT_HOST: mosquitto
+      MQTT_PORT: "1883"
+      MQTT_PASSWORD: ${ACCESS_CODE}
+    depends_on:
+      - mosquitto
+    restart: unless-stopped

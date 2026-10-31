@@ -68,9 +68,43 @@ Errors have to be worked out from status plus print history (see *Errors*).
 | 129 | Pause | `{}` | 13 → 5 pausing → 6 paused within 8–13 s |
 | 131 | Resume | `{}` | 6 → 20 → 13 printing |
 | 130 | Stop | `{}` | → 7 stopping (heaters off at once) → 8 stopped, idle within about 9 s |
+| 401 | Move an axis | `{"Axis": "X\|Y\|Z", "Step": ±mm}` | Relative. The printer's panel offers 0.1, 1, 10 and 100. Refused until homed (`Ack 3`). |
+| 402 | Home | `{"Axis": "X\|Y\|Z\|XYZ"}` | `CurrentStatus` 9 while homing; XYZ took 67 s |
 | 403 | Fans | `{"TargetFanSpeed": {"ModelFan": 0-100}}` | Any subset of `ModelFan`, `AuxiliaryFan`, `BoxFan` |
 | 403 | Temperatures | `{"TempTargetNozzle": °C, "TempTargetHotbed": °C}` | Works while idle |
 | 403 | Light | `{"LightStatus": {"SecondLight": 0 or 1}}` | **Toggles** whatever value is sent (see quirks) |
+
+Errors for 401 and 402, in the reply's `Ack`, as the printer's web page words them:
+- 1: the machine is busy
+- 2: parameter error
+- 3: "Please zero the moving axis before moving"
+- 4, 5: zeroing failed
+
+### The printer's own command list
+
+The printer's built-in web page (`http://IP/`, also shown in ElegooSlicer's
+Device tab) names every SDCP command it uses, in its script `main.*.js`:
+
+| Cmd | Name | Notes |
+| --- | --- | --- |
+| 0, 1 | Status, attributes | |
+| 64 | Disconnect | |
+| 128–131 | Start, pause, stop, resume | |
+| 134 | Power-loss status | Sent on every connect. `Ack 1` = an unfinished job is waiting: the page asks "Resume printing?". |
+| 135 | Power-loss action | `{"action": 1}` resumes, `0` cancels |
+| 192 | Rename printer | |
+| 255 | File transfer end | |
+| 257–260 | Rename, list, delete, detail of files | |
+| 320–324 | History IDs, detail, delete, time-lapse video, material data | |
+| 386 | Video stream | `{"Enable": 1}` or `0`; the reply carries `VideoUrl` |
+| 387 | Time-lapse on/off | |
+| 401, 402, 403 | Move, home, set parameters | As above |
+| 503 | File colour data | |
+
+The control panel's own scripts (`25.*.js`) show how it uses them:
+- Moves and homing are only sent when `CurrentStatus` doesn't contain 1.
+- The light is sent as the whole `LightStatus` object.
+- The side fan's on/off switch sets 70 %.
 
 Start print:
 
@@ -103,7 +137,7 @@ From `sdcp/status`, under `Status`:
 
 | Field | Meaning |
 | --- | --- |
-| `CurrentStatus` | List; 0 idle, 1 busy, 10 filament load/unload from the screen, 2/8 brief at job start |
+| `CurrentStatus` | List; 0 idle, 1 busy with a job, **9 homing**, 10 filament load/unload from the screen, 2/8 brief at job start |
 | `PrintInfo.Status` | Job state (table below) |
 | `PrintInfo.CurrentLayer`, `TotalLayer` | Layers. `TotalLayer` appears once the file is loaded (state 18). |
 | `PrintInfo.CurrentTicks`, `TotalTicks` | Elapsed and estimated seconds. Remaining = total − current. |
@@ -191,6 +225,12 @@ full list still has to be found in the firmware source.
 The history keeps only a few entries: 3–6 seen.
 
 ## Quirks
+
+- **After a power cut the printer can come back in a bad state.** On 2026-10-31,
+  the camera stream sent no frames (HTTP 200, 0 bytes), even in ElegooSlicer. A
+  home command (402) was accepted, but homing never ran and `CurrentStatus` stayed
+  9. Meanwhile the printer ignored fan commands, even from its own touchscreen.
+  Switching it off and on fixed everything, and the same home then worked.
 
 - **Light:** `SecondLight: 0` turned the light on and `1` turned it off, starting
   from off. Treat it as a toggle: read the state, then send only if a change is

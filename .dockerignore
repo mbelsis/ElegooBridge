@@ -1,0 +1,8 @@
+local/
+tests/
+tools/
+docs/
+mosquitto/certs/
+.git/
+**/__pycache__/
+.env

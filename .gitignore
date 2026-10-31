@@ -4,3 +4,8 @@ local/
 __pycache__/
 *.pyc
 .DS_Store
+
+# Secrets and generated files
+.env
+mosquitto/certs/
+.venv/
