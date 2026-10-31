@@ -28,6 +28,7 @@ services:
       FTP_PASSIVE_IP: ${BRIDGE_HOST_IP:?set BRIDGE_HOST_IP in .env}
     ports:
       - "990:990"
+      - "6000:6000"   # camera, as a P1S
       - "50000-50009:50000-50009"
     volumes:
       - ./mosquitto/certs:/certs:ro

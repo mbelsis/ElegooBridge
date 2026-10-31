@@ -36,6 +36,8 @@ class Config:
     ftp_passive_end: int = 50009
     ftp_cert: Path = Path("/certs/server.crt")
     ftp_key: Path = Path("/certs/server.key")
+    camera_enable: bool = False
+    camera_port: int = 6000
 
     @classmethod
     def from_env(cls) -> Config:
@@ -56,4 +58,6 @@ class Config:
             ftp_passive_end=int(_env("FTP_PASSIVE_END", "50009")),
             ftp_cert=Path(_env("FTP_CERT", "/certs/server.crt")),
             ftp_key=Path(_env("FTP_KEY", "/certs/server.key")),
+            camera_enable=_env("CAMERA_ENABLE", "1").lower() in ("1", "true", "yes"),
+            camera_port=int(_env("CAMERA_PORT", "6000")),
         )

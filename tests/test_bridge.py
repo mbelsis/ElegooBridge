@@ -170,6 +170,8 @@ class BridgeTests(unittest.TestCase):
         self.assertEqual(reply["result"], "failed")
         self.assertIn("Bambu Lab P1S", reply["reason"])
         self.assertEqual(self.uploads, [])
+        self.wait(lambda: self.mqtt.reports()[-1]["print_error"] == 0x05004037)
+        self.assertEqual(self.mqtt.reports()[-1]["gcode_state"], "FAILED")
         self.assertNotIn(sdcp.START, [c for c, _ in self.server.received])
 
     def test_no_start_while_busy_or_missing(self):

@@ -13,7 +13,7 @@ Bambuddy  --MQTT/TLS :8883-->  Mosquitto  <-->  ElegooBridge  --SDCP :3030-->  C
          (sees a Bambu P1S)
 ```
 
-Version **0.2.0**. Tested with Bambuddy and a Centauri Carbon (firmware V1.4.49),
+Version **0.3.0**. Tested with Bambuddy and a Centauri Carbon (firmware V1.4.49),
 including a print sent from Bambuddy's queue.
 
 ## Screenshots
@@ -24,7 +24,7 @@ The Centauri Carbon in Bambuddy, through ElegooBridge:
 | --- | --- |
 | ![The Centauri Carbon card in Bambuddy, printing at 48 %, layer 71 of 128](Screenshots/SamplePrinting.png) | ![Setting the auxiliary (side) fan speed](Screenshots/FansSpeed.png) |
 
-| Temperature control after a finished print | Live camera (external MJPEG camera) |
+| Temperature control after a finished print | Live camera |
 | --- | --- |
 | ![Setting the nozzle temperature](Screenshots/TempConfiguration.png) | ![The Centauri's camera view next to its card](Screenshots/Camera.png) |
 
@@ -40,9 +40,10 @@ The Centauri Carbon in Bambuddy, through ElegooBridge:
 | Pause, resume, stop | ✓ |
 | Nozzle and bed temperature, part / auxiliary / chamber fans, chamber light, speed level | ✓ |
 | Home and X/Y/Z jog (the printer must be homed before jogging) | ✓ |
-| Camera, through Bambuddy's external camera: MJPEG, `http://PRINTER_IP:3031/video` | ✓ |
+| **Camera**, built in: live view and snapshots, as a P1S camera on port 6000. Any number of viewers share one connection to the printer, which allows only four. | ✓ |
 | Offline when the Centauri is off (after Bambuddy's 60 s timeout) | ✓ |
 | **Printing from Bambuddy** (library, queue): files must be stamped, see below | ✓ |
+| A refused print shows on the card at once as a failed job with a Bambu error, e.g. `0500_4037` "not compatible with current printer model" | ✓ |
 | File manager: the files Bambuddy uploaded | ✓ |
 | Extruder jog, AMS / CANVAS, the Centauri's own stored files, other G-code | No |
 
@@ -140,10 +141,9 @@ it.
 2. ~~Phase 1, status and control~~: done.
 3. ~~Phase 2, printing from Bambuddy~~: done.
 4. Next:
-   - report a refused print to Bambuddy at once, with the reason (today its
-     90-second watchdog notices);
    - show the Centauri's own stored files;
-   - switch the camera on through SDCP (386) after a restart;
+   - switch the camera on through SDCP (386) after a restart, if it comes back
+     without a picture;
    - answer the power-loss prompt from Bambuddy (134 / 135);
    - publish a Docker image.
 
@@ -168,6 +168,7 @@ the bridge and FTPS tests are skipped.
 | `elegoobridge/jobs.py` | Finds the upload, extracts the plate, checks it was sliced for a Centauri |
 | `elegoobridge/upload.py` | Uploads G-code to the Centauri over HTTP |
 | `elegoobridge/stamp.py` | Labels Centauri `.gcode.3mf` files for Bambuddy's P1S card |
+| `elegoobridge/camera.py` | Camera relay: one MJPEG connection to the printer, served as a P1S camera on port 6000 |
 | `docs/` | Protocol findings and the test log |
 | `tools/` | The scripts used to work out the protocol |
 | `local/` | Private: your printer's details and raw recordings. Ignored by git. |

@@ -112,6 +112,16 @@ class FieldTests(unittest.TestCase):
         self.assertTrue(r["subtask_id"].isdigit())
         self.assertEqual(r["subtask_id"], job_number("3553fdae-1b4e"))
 
+    def test_refused_job_shows_failed_with_error_until_next_job(self):
+        m = Mapper()
+        report(m, 0, filename="")
+        m.refuse_job(0x05004037)
+        r = report(m, 0, filename="")
+        self.assertEqual((r["gcode_state"], f"{r['print_error']:08X}"), ("FAILED", "05004037"))
+        # The next job clears it.
+        self.assertEqual(report(m, 16)["print_error"], 0)
+        self.assertEqual(report(m, 9)["print_error"], 0)
+
     def test_homing_from_the_control_panel(self):
         r = report(Mapper(), 0, filename="", current=9)
         self.assertEqual((r["gcode_state"], r["stg_cur"]), ("IDLE", 13))

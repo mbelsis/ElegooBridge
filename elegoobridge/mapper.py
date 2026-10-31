@@ -84,6 +84,13 @@ class Mapper:
         self.last_task = ""
         self.pause_reason = 0
         self.job_active = False
+        self.job_error = 0      # a print the bridge refused, shown until the next job
+
+    def refuse_job(self, code: int) -> None:
+        """Show a refused print as a failed job with a Bambu error, as a printer would."""
+        self.gcode_state = "FAILED"
+        self.job_active = False
+        self.job_error = code
 
     def state_for(self, code: int) -> str:
         if code == PRINTING:
@@ -107,6 +114,8 @@ class Mapper:
         state = self.state_for(code)
         if code not in PAUSE_STATES:
             self.pause_reason = 0
+        if state in ("PREPARE", "RUNNING", "PAUSE"):
+            self.job_error = 0
         self.job_active = state in ("RUNNING", "PAUSE", "PREPARE")
         self.gcode_state = state
 
@@ -126,6 +135,8 @@ class Mapper:
             percent, remaining = 100, 0
 
         error, stage = 0, STAGE_NONE
+        if state == "FAILED" and self.job_error:
+            error = self.job_error
         if state == "PAUSE":
             error, stage = REASONS.get(self.pause_reason, (0, STAGE_USER_PAUSE, ""))[:2]
         elif state == "RUNNING":

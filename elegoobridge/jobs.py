@@ -20,8 +20,16 @@ CENTAURI = re.compile(r"centauri", re.I)
 PRINTER_LINE = re.compile(rb"^;\s*(printer_model|printer_settings_id)\s*=\s*(.*)$", re.M)
 
 
+# Bambu print_error codes Bambuddy shows when the bridge refuses a print
+WRONG_PRINTER = 0x05004037   # "Your sliced file is not compatible with current printer model"
+INVALID_FILE = 0x05004046    # "The print has stopped because the 3MF file is invalid"
+FILE_PROBLEM = 0x0500400B    # "There was a problem downloading a file"
+
+
 class JobError(Exception):
-    pass
+    def __init__(self, message: str, code: int = FILE_PROBLEM) -> None:
+        super().__init__(message)
+        self.code = code
 
 
 def is_print_file(name: str) -> bool:
@@ -52,11 +60,11 @@ def _plate_member(names: list[str], wanted: str) -> str:
         return wanted
     plates = sorted(n for n in names if re.fullmatch(r"Metadata/plate_\d+\.gcode", n))
     if wanted and not plates:
-        raise JobError(f"{wanted} is not in the file")
+        raise JobError(f"{wanted} is not in the file", INVALID_FILE)
     if not plates:
-        raise JobError("the file contains no sliced G-code; slice it before printing")
+        raise JobError("the file contains no sliced G-code; slice it before printing", INVALID_FILE)
     if wanted:
-        raise JobError(f"{wanted} is not in the file (it has {', '.join(plates)})")
+        raise JobError(f"{wanted} is not in the file (it has {', '.join(plates)})", INVALID_FILE)
     return plates[0]
 
 
@@ -70,22 +78,23 @@ def extract_gcode(path: Path, plate: str = "") -> bytes:
     """The G-code to print, refusing anything not sliced for a Centauri Carbon."""
     if path.name.lower().endswith(".gcode") and not path.name.lower().endswith(".gcode.3mf"):
         if path.stat().st_size > MAX_GCODE:
-            raise JobError("the G-code file is too large")
+            raise JobError("the G-code file is too large", INVALID_FILE)
         data = path.read_bytes()
     else:
         try:
             with zipfile.ZipFile(path) as archive:
                 member = _plate_member(archive.namelist(), plate)
                 if archive.getinfo(member).file_size > MAX_GCODE:
-                    raise JobError("the plate's G-code is too large")
+                    raise JobError("the plate's G-code is too large", INVALID_FILE)
                 data = archive.read(member)
         except zipfile.BadZipFile:
-            raise JobError(f"{path.name} is not a valid 3MF file") from None
+            raise JobError(f"{path.name} is not a valid 3MF file", INVALID_FILE) from None
     printer = sliced_for(data)
     if not CENTAURI.search(printer):
         raise JobError(
             f"this G-code was sliced for {printer or 'an unknown printer'}, not a Centauri Carbon; "
-            "slice it with a Centauri Carbon profile"
+            "slice it with a Centauri Carbon profile",
+            WRONG_PRINTER,
         )
     return data
 

@@ -142,6 +142,7 @@ class Bridge:
         if action.clear_error:
             with self._lock:
                 self.mapper.pause_reason = 0
+                self.mapper.job_error = 0
         if action.reply:
             self.mqtt.publish(self.report_topic, json.dumps(action.reply), qos=0)
         if action.version:
@@ -173,6 +174,12 @@ class Bridge:
         except (jobs.JobError, upload.UploadError, sdcp.SdcpError, OSError) as error:
             reason = str(error)
             log.warning("print not started: %s", reason)
+            if reason != "the printer is busy":
+                # Show it on Bambuddy's card at once, with a Bambu error code.
+                with self._lock:
+                    self.mapper.refuse_job(getattr(error, "code", jobs.FILE_PROBLEM))
+                if self.printer.status:
+                    self._publish_status(self.printer.status)
         reply = {"print": {"command": command, "sequence_id": str(block.get("sequence_id") or "0"), "result": result}}
         if reason:
             reply["print"]["reason"] = reason
@@ -216,6 +223,13 @@ class Bridge:
             self.cfg.printer_host, self.cfg.mqtt_host, self.cfg.mqtt_port, self.cfg.serial,
         )
         threading.Thread(target=self._worker, name="commands", daemon=True).start()
+        if self.cfg.camera_enable:
+            from elegoobridge.camera import CameraRelay, ChamberImageServer
+
+            ChamberImageServer(
+                CameraRelay(self.cfg.printer_host), self.cfg.ftp_cert, self.cfg.ftp_key,
+                self.cfg.mqtt_password, port=self.cfg.camera_port,
+            ).start()
         if self.cfg.ftp_enable:
             from elegoobridge.ftp_server import start_ftps
 
