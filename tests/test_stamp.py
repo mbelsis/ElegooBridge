@@ -3,8 +3,16 @@ import unittest
 import zipfile
 from pathlib import Path
 
+import importlib.util
+
 from elegoobridge import jobs
-from elegoobridge.stamp import StampError, output_path, stamp
+
+# The stamp script is standalone (stamp/stamp_for_bambuddy.py), not part of the package.
+_SCRIPT = Path(__file__).resolve().parent.parent / "stamp" / "stamp_for_bambuddy.py"
+_spec = importlib.util.spec_from_file_location("stamp_for_bambuddy", _SCRIPT)
+stamp_script = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(stamp_script)
+StampError, output_path, stamp = stamp_script.StampError, stamp_script.output_path, stamp_script.stamp
 from tests.test_jobs import CENTAURI_GCODE, P1S_GCODE
 
 SLICE_INFO = '<config><plate><metadata key="index" value="1"/><metadata key="printer_model_id" value="Elegoo-CC"/></plate></config>'
@@ -66,6 +74,18 @@ class StampTests(unittest.TestCase):
         renamed = stamped.rename(self.root / "renamed.gcode.3mf")
         with self.assertRaisesRegex(StampError, "already stamped"):
             stamp(renamed)
+
+    def test_folder_argument_and_messages(self):
+        sliced_3mf(self.root / "a.gcode.3mf")
+        sliced_3mf(self.root / "b.gcode.3mf", P1S_GCODE)
+        self.assertEqual(stamp_script.main([str(self.root)]), 1)  # b is refused
+        self.assertTrue((self.root / "a.bambuddy.gcode.3mf").exists())
+        self.assertFalse((self.root / "b.bambuddy.gcode.3mf").exists())
+        # Running again over the folder skips everything, changes nothing.
+        before = sorted(p.name for p in self.root.iterdir())
+        stamp_script.main([str(self.root)])
+        self.assertEqual(sorted(p.name for p in self.root.iterdir()), before)
+        self.assertEqual(stamp_script.main([]), 2)
 
     def test_output_names(self):
         self.assertEqual(output_path(Path("a/x.gcode.3mf")).name, "x.bambuddy.gcode.3mf")

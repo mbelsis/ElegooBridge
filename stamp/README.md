@@ -1,0 +1,51 @@
+# Stamp for Bambuddy
+
+`stamp_for_bambuddy.py` prepares Centauri Carbon print files so Bambuddy will print
+them through ElegooBridge. **Run it on your own computer**, where you slice. It has
+nothing to do with Docker.
+
+It's a single file that needs only Python 3, which macOS and Linux already have.
+On Windows, install Python from python.org. You can copy this one file anywhere.
+
+## Use
+
+1. In ElegooSlicer, or OrcaSlicer with a Centauri Carbon profile, slice the plate,
+   then choose **File → Export → Export plate sliced file**.
+2. Stamp the file:
+   ```sh
+   python3 stamp_for_bambuddy.py ~/Downloads/cube.gcode.3mf
+   ```
+   ```
+   Stamped: cube.gcode.3mf -> cube.bambuddy.gcode.3mf
+   ```
+   Or a whole folder at once, for example your Downloads:
+   ```sh
+   python3 stamp_for_bambuddy.py ~/Downloads
+   ```
+   Tip: type `python3 ` and the script's path, then drag the file from Finder into
+   the Terminal window to fill in its path.
+3. Add the file ending in **`.bambuddy.gcode.3mf`** to Bambuddy's File Manager,
+   then print it on the Centauri card.
+
+Run it again after every new export. It never changes your original file and never
+overwrites an earlier stamped copy. Files already stamped are skipped.
+
+## Why it's needed
+
+Bambuddy only prints a file on the printer model it was sliced for. ElegooBridge
+shows the Centauri to Bambuddy as a **P1S**, but ElegooSlicer labels the file
+**"Elegoo-CC"**. Without the stamp, Bambuddy refuses it: "…was sliced for
+Elegoo-CC and cannot be dispatched to P1S printers".
+
+## What it changes
+
+| Part of the file | Change |
+| --- | --- |
+| `Metadata/slice_info.config`: `printer_model_id` | `Elegoo-CC` → `C12` (P1S) |
+| `Metadata/project_settings.config`: `printer_model` | `Elegoo Centauri Carbon` → `Bambu Lab P1S` |
+| **The G-code** | **Unchanged, byte for byte**. It still says it's for a Centauri. |
+| Everything else | Unchanged |
+
+It refuses files that weren't sliced for a Centauri Carbon, or have no sliced
+G-code. ElegooBridge checks the G-code again before printing, so a file for
+another printer can never reach the Centauri.

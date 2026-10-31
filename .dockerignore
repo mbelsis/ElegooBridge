@@ -6,3 +6,5 @@ mosquitto/certs/
 .git/
 **/__pycache__/
 .env
+stamp/
+Screenshots/

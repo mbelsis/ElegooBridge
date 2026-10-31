@@ -16,8 +16,8 @@ Bambuddy  --MQTT/TLS :8883-->  Mosquitto  <-->  ElegooBridge  --SDCP :3030-->  C
 Version **0.3.0**. Tested with Bambuddy and a Centauri Carbon (firmware V1.4.49),
 including a print sent from Bambuddy's queue.
 
-> **Before printing from Bambuddy:** sliced files must be stamped first with
-> `python3 -m elegoobridge stamp FILE.gcode.3mf`. See
+> **Before printing from Bambuddy:** sliced files must be stamped first, on your
+> own computer, with the script in the [`stamp/`](stamp/) folder. See
 > [Printing from Bambuddy](#printing-from-bambuddy).
 
 ## Screenshots
@@ -91,7 +91,9 @@ with port 8883, so a second Centauri needs a second host or IP address.
 
 > **Important: stamp every file before you add it to Bambuddy.**
 > Files from ElegooSlicer (or OrcaSlicer with a Centauri profile) can't be printed
-> from Bambuddy as they are. Run them through `stamp` first, each time you export.
+> from Bambuddy as they are. Run them through
+> [`stamp/stamp_for_bambuddy.py`](stamp/stamp_for_bambuddy.py) first, each time you
+> export. It runs on your own computer, where you slice, not in Docker.
 
 ### Why
 
@@ -111,18 +113,19 @@ The stamp changes only that label, to P1S, so Bambuddy accepts the file.
    sliced file**. You get a `.gcode.3mf` file. A project saved with **Save
    project** has no G-code and won't print. The menu item is greyed out until
    the plate is sliced.
-2. **Stamp it.** In a terminal, in the ElegooBridge folder:
+2. **Stamp it** with the script in the [`stamp/`](stamp/) folder. It's a single
+   file that needs only Python 3, already on macOS and Linux. You can copy it
+   anywhere, and run it from any folder:
    ```sh
-   python3 -m elegoobridge stamp ~/Downloads/cube.gcode.3mf
+   python3 stamp/stamp_for_bambuddy.py ~/Downloads/cube.gcode.3mf
    ```
-   This writes a new file next to the original:
    ```
-   ~/Downloads/cube.gcode.3mf -> ~/Downloads/cube.bambuddy.gcode.3mf
+   Stamped: cube.gcode.3mf -> cube.bambuddy.gcode.3mf
    ```
-   You can stamp several files at once: `python3 -m elegoobridge stamp *.gcode.3mf`.
-   Files that are already stamped, or already have a stamped copy, are skipped
-   with a message, so running it again over a folder is safe. Only Python 3 is
-   needed, not Docker.
+   To stamp every sliced file in a folder at once, give the folder:
+   `python3 stamp/stamp_for_bambuddy.py ~/Downloads`. Files already stamped are
+   skipped, so this is safe to repeat. On a Mac, you can type the command and then
+   drag the file from Finder into the Terminal window to fill in its path.
 3. **Add the stamped file**, the one ending in `.bambuddy.gcode.3mf`, to
    Bambuddy's **File Manager**. Then print it on the Centauri card. If asked about
    AMS slots, choose the external spool.
@@ -217,8 +220,8 @@ the bridge and FTPS tests are skipped.
 | `elegoobridge/ftp_server.py` | FTPS server for Bambuddy's uploads (print files only, binary, Bambu-style TLS) |
 | `elegoobridge/jobs.py` | Finds the upload, extracts the plate, checks it was sliced for a Centauri |
 | `elegoobridge/upload.py` | Uploads G-code to the Centauri over HTTP |
-| `elegoobridge/stamp.py` | Labels Centauri `.gcode.3mf` files for Bambuddy's P1S card |
 | `elegoobridge/camera.py` | Camera relay: one MJPEG connection to the printer, served as a P1S camera on port 6000 |
+| `stamp/` | **Standalone script** that labels Centauri `.gcode.3mf` files for Bambuddy's P1S card; runs on your own computer |
 | `docs/` | Protocol findings and the test log |
 | `tools/` | The scripts used to work out the protocol |
 | `local/` | Private: your printer's details and raw recordings. Ignored by git. |
