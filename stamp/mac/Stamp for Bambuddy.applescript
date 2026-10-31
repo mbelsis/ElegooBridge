@@ -25,8 +25,13 @@ on stampItems(theItems)
 		return
 	end try
 	if report is "" then set report to "Nothing to stamp."
+	if report contains "Stamped:" then
+		set advice to "Add the files ending in .bambuddy.gcode.3mf to Bambuddy."
+	else
+		set advice to "Nothing was stamped. Only sliced Centauri Carbon files can be stamped: open the project in ElegooSlicer with the Centauri Carbon printer, slice it, then use File > Export > Export plate sliced file, and drop that file here."
+	end if
 	set firstItem to item 1 of theItems
-	set answer to display dialog report & return & return & "Add the files ending in .bambuddy.gcode.3mf to Bambuddy." buttons {"Show in Finder", "OK"} default button "OK" with title "Stamp for Bambuddy"
+	set answer to display dialog report & return & return & advice buttons {"Show in Finder", "OK"} default button "OK" with title "Stamp for Bambuddy"
 	if button returned of answer is "Show in Finder" then
 		tell application "Finder"
 			activate
