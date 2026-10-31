@@ -16,6 +16,10 @@ Bambuddy  --MQTT/TLS :8883-->  Mosquitto  <-->  ElegooBridge  --SDCP :3030-->  C
 Version **0.3.0**. Tested with Bambuddy and a Centauri Carbon (firmware V1.4.49),
 including a print sent from Bambuddy's queue.
 
+> **Before printing from Bambuddy:** sliced files must be stamped first with
+> `python3 -m elegoobridge stamp FILE.gcode.3mf`. See
+> [Printing from Bambuddy](#printing-from-bambuddy).
+
 ## Screenshots
 
 The Centauri Carbon in Bambuddy, through ElegooBridge:
@@ -80,30 +84,76 @@ You need Docker, and the Centauri on the same network.
    | Serial number | `BAMBU_SERIAL` from `.env` |
    | Access code | `ACCESS_CODE` from `.env` |
 
+**One bridge per printer.** Bambuddy expects each printer on its own IP address
+with port 8883, so a second Centauri needs a second host or IP address.
+
 ## Printing from Bambuddy
 
-Bambuddy only sends a file to a printer of the model it was sliced for, and the
-card is a P1S. So Centauri files need a label change first:
+> **Important: stamp every file before you add it to Bambuddy.**
+> Files from ElegooSlicer (or OrcaSlicer with a Centauri profile) can't be printed
+> from Bambuddy as they are. Run them through `stamp` first, each time you export.
 
-1. In ElegooSlicer, or OrcaSlicer with a Centauri Carbon profile, slice the plate
-   and use **File → Export → Export plate sliced file** (`.gcode.3mf`).
-2. Stamp it, from this folder:
+### Why
+
+Bambuddy only sends a file to a printer of the same model it was sliced for. The
+bridge shows the Centauri to Bambuddy as a **P1S**, but a file sliced for the
+Centauri says **"Elegoo-CC"**. Without the stamp, Bambuddy refuses to print it,
+with a message like:
+
+> test.gcode.3mf was sliced for Elegoo-CC and cannot be dispatched to P1S printers
+
+The stamp changes only that label, to P1S, so Bambuddy accepts the file.
+
+### How
+
+1. **Slice for the Centauri.** In ElegooSlicer, or OrcaSlicer with a Centauri
+   Carbon profile, slice the plate, then choose **File → Export → Export plate
+   sliced file**. You get a `.gcode.3mf` file. A project saved with **Save
+   project** has no G-code and won't print. The menu item is greyed out until
+   the plate is sliced.
+2. **Stamp it.** In a terminal, in the ElegooBridge folder:
    ```sh
    python3 -m elegoobridge stamp ~/Downloads/cube.gcode.3mf
    ```
-   This writes `cube.bambuddy.gcode.3mf` next to it. Only two labels change: the
-   printer model in `slice_info.config` and in `project_settings.config`. The
-   G-code is copied unchanged. Files not sliced for a Centauri are refused.
-3. Add the stamped file to Bambuddy's **File Manager**, then print it on the
-   Centauri card. Choose the external spool if asked about AMS slots.
+   This writes a new file next to the original:
+   ```
+   ~/Downloads/cube.gcode.3mf -> ~/Downloads/cube.bambuddy.gcode.3mf
+   ```
+   You can stamp several files at once: `python3 -m elegoobridge stamp *.gcode.3mf`.
+   Files that are already stamped, or already have a stamped copy, are skipped
+   with a message, so running it again over a folder is safe. Only Python 3 is
+   needed, not Docker.
+3. **Add the stamped file**, the one ending in `.bambuddy.gcode.3mf`, to
+   Bambuddy's **File Manager**. Then print it on the Centauri card. If asked about
+   AMS slots, choose the external spool.
 
-When Bambuddy starts the print, the bridge:
-- takes the plate's G-code out of the file;
-- **checks it was sliced for a Centauri Carbon**, and refuses anything else;
+**Re-slice, re-stamp.** If you change anything and export again, stamp the new
+export too. The stamp never changes your original file and never overwrites an
+existing stamped file. Delete the old `.bambuddy.gcode.3mf` first, or keep both.
+
+### What the stamp changes, and what it doesn't
+
+| Part of the file | Stamped |
+| --- | --- |
+| `Metadata/slice_info.config`: `printer_model_id` | `Elegoo-CC` → `C12` (P1S) |
+| `Metadata/project_settings.config`: `printer_model` | `Elegoo Centauri Carbon` → `Bambu Lab P1S` |
+| **The G-code** | **Unchanged, byte for byte**. It still says it was sliced for the Centauri. |
+| Everything else (thumbnails, settings, model) | Unchanged |
+
+The stamp refuses files that weren't sliced for a Centauri Carbon, and files with
+no sliced G-code.
+
+### What happens when Bambuddy prints it
+
+The bridge receives the file and:
+- takes the plate's G-code out of it;
+- **checks that G-code was sliced for a Centauri Carbon**, and refuses anything
+  else, so a real P1S file can never reach the Centauri;
 - uploads it to the printer, then starts it.
 
-**One bridge per printer.** Bambuddy expects each printer on its own IP address
-with port 8883, so a second Centauri needs a second host or IP address.
+If the bridge refuses a file, the Centauri card shows a failed job with the
+reason, for example `0500_4037` "Your sliced file is not compatible with current
+printer model".
 
 ## How states are shown
 

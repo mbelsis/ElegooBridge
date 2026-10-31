@@ -42,6 +42,8 @@ def output_path(source: Path) -> Path:
 
 
 def stamp(source: Path, target: Path | None = None) -> Path:
+    if source.name.lower().endswith(SUFFIX):
+        raise StampError("already stamped")
     target = target or output_path(source)
     if target.exists():
         raise StampError(f"{target.name} already exists")
@@ -51,6 +53,8 @@ def stamp(source: Path, target: Path | None = None) -> Path:
         raise StampError(f"{source.name} is not a 3MF file: {error}") from None
     with archive:
         names = archive.namelist()
+        if "Metadata/elegoobridge.json" in names:
+            raise StampError("already stamped")
         plates = [n for n in names if re.fullmatch(r"Metadata/plate_\d+\.gcode", n)]
         if not plates:
             raise StampError("the file contains no sliced G-code: slice the plate and use "

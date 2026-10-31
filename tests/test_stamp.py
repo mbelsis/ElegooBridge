@@ -59,6 +59,14 @@ class StampTests(unittest.TestCase):
         with self.assertRaisesRegex(StampError, "already exists"):
             stamp(source)
 
+    def test_already_stamped_files_are_skipped(self):
+        stamped = stamp(sliced_3mf(self.root / "cube.gcode.3mf"))
+        with self.assertRaisesRegex(StampError, "already stamped"):
+            stamp(stamped)
+        renamed = stamped.rename(self.root / "renamed.gcode.3mf")
+        with self.assertRaisesRegex(StampError, "already stamped"):
+            stamp(renamed)
+
     def test_output_names(self):
         self.assertEqual(output_path(Path("a/x.gcode.3mf")).name, "x.bambuddy.gcode.3mf")
         self.assertEqual(output_path(Path("x.3mf")).name, "x.bambuddy.gcode.3mf")
