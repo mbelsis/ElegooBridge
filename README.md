@@ -113,7 +113,10 @@ The stamp changes only that label, to P1S, so Bambuddy accepts the file.
    sliced file**. You get a `.gcode.3mf` file. A project saved with **Save
    project** has no G-code and won't print. The menu item is greyed out until
    the plate is sliced.
-2. **Stamp it** with the script in the [`stamp/`](stamp/) folder. It's a single
+2. **Stamp it.** On a Mac, the easiest way is to drag the file onto **Stamp for
+   Bambuddy.app**, which `./stamp/build-mac-app.sh` builds; see
+   [`stamp/README.md`](stamp/README.md). Otherwise use the script in the
+   [`stamp/`](stamp/) folder. It's a single
    file that needs only Python 3, already on macOS and Linux. You can copy it
    anywhere, and run it from any folder:
    ```sh

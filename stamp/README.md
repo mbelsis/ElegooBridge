@@ -7,7 +7,25 @@ nothing to do with Docker.
 It's a single file that needs only Python 3, which macOS and Linux already have.
 On Windows, install Python from python.org. You can copy this one file anywhere.
 
-## Use
+## Easiest on a Mac: the drag-and-drop app
+
+Build it once (it needs only macOS):
+```sh
+./stamp/build-mac-app.sh
+```
+This creates **`stamp/dist/Stamp for Bambuddy.app`**. Move it to Applications or
+keep it in the Dock. Then:
+
+- **Drop** one or more `.gcode.3mf` files, or a whole folder, on the app. The
+  stamped copies appear next to the originals. A window lists what was stamped or
+  skipped, with a **Show in Finder** button.
+- Or **double-click** the app and choose the files.
+
+The app contains the script and runs it with the Mac's own Python. The first time,
+macOS may say it can't verify the developer: right-click the app → **Open** →
+**Open**.
+
+## Use from the command line
 
 1. In ElegooSlicer, or OrcaSlicer with a Centauri Carbon profile, slice the plate,
    then choose **File → Export → Export plate sliced file**.
