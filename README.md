@@ -16,7 +16,7 @@ Bambuddy  --MQTT/TLS :8883-->  Mosquitto  <-->  ElegooBridge  --SDCP :3030-->  C
 Version **0.3.0**. Tested with Bambuddy and a Centauri Carbon (firmware V1.4.49),
 including a print sent from Bambuddy's queue.
 
-> **Before printing from Bambuddy:** sliced files must be stamped first, on your
+> ⚠️ **Before printing from Bambuddy:** sliced files must be stamped first, on your
 > own computer, with the **Stamp for Bambuddy** Mac app (drag and drop) or a
 > Python script. See [Printing from Bambuddy](#printing-from-bambuddy).
 
