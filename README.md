@@ -16,6 +16,18 @@ Bambuddy  --MQTT/TLS :8883-->  Mosquitto  <-->  ElegooBridge  --SDCP :3030-->  C
 Version **0.2.0**. Tested with Bambuddy and a Centauri Carbon (firmware V1.4.49),
 including a print sent from Bambuddy's queue.
 
+## Screenshots
+
+The Centauri Carbon in Bambuddy, through ElegooBridge:
+
+| Printing a file sent from Bambuddy's queue | Fan control during a print |
+| --- | --- |
+| ![The Centauri Carbon card in Bambuddy, printing at 48 %, layer 71 of 128](Screenshots/SamplePrinting.png) | ![Setting the auxiliary (side) fan speed](Screenshots/FansSpeed.png) |
+
+| Temperature control after a finished print | Live camera (external MJPEG camera) |
+| --- | --- |
+| ![Setting the nozzle temperature](Screenshots/TempConfiguration.png) | ![The Centauri's camera view next to its card](Screenshots/Camera.png) |
+
 ## What works
 
 | In Bambuddy | Status |
